@@ -1,0 +1,47 @@
+[package]
+name = "wasm-worklet"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+console_log = "0.2.0"
+js-sys = "0.3.60"
+wasm-bindgen = "0.2.83"
+wasm-bindgen-futures = "0.4.33"
+stdweb = "0.4.20"
+rsor = "0.1"
+futures = "0.3.17"
+serde = { version = "1.0", features = ["derive"] }
+serde-wasm-bindgen = "0.4.5"
+regex = "1.6.0"
+enum-map = "2.4.1"
+serde_json = "1.0"
+lazy_static = "1.4.0"
+
+tsify = { version = "0.4.3", features = ["js"] }
+
+wasm-worklet-macros = { path = "../macros" }
+
+[dependencies.web-sys]
+version = "0.3.59"
+features = [
+  "AudioContext",
+  "AudioDestinationNode",
+  "AudioWorklet",
+  "AudioParam",
+  "AudioParamMap",
+  "AudioWorkletNode",
+  "AudioWorkletNodeOptions",
+  "AudioWorkletProcessor",
+  "MessagePort",
+  "MessageEvent",
+  "AddEventListenerOptions",
+  "Blob",
+  "Request",
+  "Response",
+  "BlobPropertyBag",
+  "Url",
+  "Window",
+]

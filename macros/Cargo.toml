@@ -1,0 +1,23 @@
+[package]
+name = "wasm-worklet-macros"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+proc-macro = true
+
+[dev-dependencies]
+trybuild = { version = "1.0", features = ["diff"] }
+wasm-bindgen = "0.2.83"
+wasm-bindgen-futures = "0.4.33"
+enum-map = "2.4.1"
+wasm-worklet = { path = "../wasm-worklet" }
+
+[dependencies]
+tsify = { version = "0.4.3", features = ["js"] }
+proc-macro2 = "1.0.47"
+darling = "0.14.2"
+syn = { version = "1", features = ["extra-traits"]}
+quote = "1"

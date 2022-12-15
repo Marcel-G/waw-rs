@@ -1,0 +1,16 @@
+{
+  "name": "wasm-worklet-demo",
+  "version": "1.0.0",
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "prebuild": "wasm-pack build --target web"
+  },
+  "dependencies": {
+    "vite": "^3.2.2"
+  }
+}
