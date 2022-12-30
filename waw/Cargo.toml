@@ -1,5 +1,5 @@
 [package]
-name = "wasm-worklet"
+name = "waw"
 version = "0.1.0"
 edition = "2021"
 
@@ -22,7 +22,10 @@ lazy_static = "1.4.0"
 
 tsify = { version = "0.4.3", features = ["js"] }
 
-wasm-worklet-macros = { path = "../macros" }
+waw-macros = { path = "../macros" }
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3.13"
 
 [dependencies.web-sys]
 version = "0.3.59"

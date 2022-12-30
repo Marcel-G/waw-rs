@@ -18,7 +18,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
 
     quote! {
         use wasm_bindgen::describe::*;
-        impl wasm_worklet::utils::callback::RawHackDescribe for #ident {
+        impl waw::utils::callback::RawHackDescribe for #ident {
             fn len() -> u32 { #typescript_type_len }
             fn raw_describe() { #(inform(#typescript_type_chars);)* }
         }

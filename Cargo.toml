@@ -2,7 +2,7 @@
 resolver = "2"
 
 members = [
-    "wasm-worklet",
+    "waw",
     "demo",
     "macros",
 ]

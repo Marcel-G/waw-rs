@@ -10,7 +10,7 @@ pub trait RawHackDescribe: WasmDescribe {
 
 pub struct Callback<T>(pub js_sys::Function, PhantomData<T>);
 
-// @todo move this macro
+#[doc(hidden)]
 #[macro_export]
 macro_rules! inform_char {
     ($($str:literal,)*) => {

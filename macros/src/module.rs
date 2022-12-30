@@ -12,13 +12,13 @@ fn processor(ident: &Ident) -> proc_macro2::TokenStream {
       use wasm_bindgen::prelude::*;
 
       #[wasm_bindgen]
-      pub struct #worklet_ident (wasm_worklet::worklet::Processor<#ident>);
+      pub struct #worklet_ident (waw::worklet::Processor<#ident>);
 
       #[wasm_bindgen]
       impl #worklet_ident {
         #[wasm_bindgen(constructor)]
-        pub fn new(js_processor: wasm_worklet::web_sys::AudioWorkletProcessor) -> Self {
-          #worklet_ident (wasm_worklet::worklet::Processor::new(
+        pub fn new(js_processor: waw::web_sys::AudioWorkletProcessor) -> Self {
+          #worklet_ident (waw::worklet::Processor::new(
             #ident::create(),
             js_processor
           ))
@@ -30,22 +30,22 @@ fn processor(ident: &Ident) -> proc_macro2::TokenStream {
 
         pub fn process(
           &mut self,
-          input: &wasm_worklet::js_sys::Array,
-          output: &wasm_worklet::js_sys::Array,
+          input: &waw::js_sys::Array,
+          output: &waw::js_sys::Array,
           params: &wasm_bindgen::JsValue
         ) -> bool {
           self.0.process(input, output, params)
         }
       }
 
-      impl wasm_worklet::types::AudioModuleDescriptor for #ident {
+      impl waw::types::AudioModuleDescriptor for #ident {
         fn processor_name() -> &'static str {
             &#worklet_ident_name
         }
 
         fn parameter_descriptor_json() -> String {
-          wasm_worklet::serde_json::to_string(
-            &<<#ident as wasm_worklet::types::AudioModule>::Param as wasm_worklet::types::ParameterDescriptor>::descriptors()
+          waw::serde_json::to_string(
+            &<<#ident as waw::worklet::AudioModule>::Param as waw::types::ParameterDescriptor>::descriptors()
           ).unwrap()
         }
       }
@@ -57,27 +57,27 @@ fn node(ident: &Ident) -> proc_macro2::TokenStream {
 
     quote! {
       #[wasm_bindgen]
-      pub struct #node_ident (wasm_worklet::node::Node<#ident>);
+      pub struct #node_ident (waw::node::Node<#ident>);
 
       #[wasm_bindgen]
       impl #node_ident {
-          pub async fn install(ctx: wasm_worklet::web_sys::AudioContext) -> Result<#node_ident, wasm_bindgen::JsValue> {
-              let result = wasm_worklet::node::Node::<#ident>::install(ctx).await?;
+          pub async fn install(ctx: waw::web_sys::AudioContext) -> Result<#node_ident, wasm_bindgen::JsValue> {
+              let result = waw::node::Node::<#ident>::install(ctx).await?;
               Ok(#node_ident(result))
           }
-          pub fn node(&self) -> Result<wasm_worklet::web_sys::AudioWorkletNode, wasm_bindgen::JsValue> {
+          pub fn node(&self) -> Result<waw::web_sys::AudioWorkletNode, wasm_bindgen::JsValue> {
             Ok(self.0.inner.clone())
           }
 
-          pub fn get_param(&self, param: <#ident as wasm_worklet::types::AudioModule>::Param) -> wasm_worklet::web_sys::AudioParam {
+          pub fn get_param(&self, param: <#ident as waw::worklet::AudioModule>::Param) -> waw::web_sys::AudioParam {
             self.0.get_param(param)
           }
 
-          pub fn command(&self, message: <#ident as wasm_worklet::types::AudioModule>::Command) {
+          pub fn command(&self, message: <#ident as waw::worklet::AudioModule>::Command) {
               self.0.command(message)
           }
 
-          pub fn subscribe(&mut self, callback: wasm_worklet::utils::callback::Callback<<#ident as wasm_worklet::types::AudioModule>::Event>) {
+          pub fn subscribe(&mut self, callback: waw::utils::callback::Callback<<#ident as waw::worklet::AudioModule>::Event>) {
               self.0.subscribe(callback.0)
           }
 

@@ -44,15 +44,15 @@ fn tokenize_option<T>(
 fn tokenize_descriptor(field: &ParamField) -> proc_macro2::TokenStream {
     let name = field.ident.to_string();
     let automation_rate = tokenize_option(field.automation_rate.as_ref(), |v| match v {
-        AutomationRateParam::ARate => quote! { wasm_worklet::types::AutomationRate::ARate },
-        AutomationRateParam::KRate => quote! { wasm_worklet::types::AutomationRate::KRate },
+        AutomationRateParam::ARate => quote! { waw::types::AutomationRate::ARate },
+        AutomationRateParam::KRate => quote! { waw::types::AutomationRate::KRate },
     });
     let min_value = tokenize_option(field.min_value, |v| quote! { #v });
     let max_value = tokenize_option(field.max_value, |v| quote! { #v });
     let default_value = tokenize_option(field.default_value, |v| quote! { #v });
 
     quote! {
-        wasm_worklet::types::AudioParamDescriptor {
+        waw::types::AudioParamDescriptor {
             name: String::from(#name),
             automation_rate: #automation_rate,
             min_value: #min_value,
@@ -78,8 +78,8 @@ pub fn derive(input: TokenStream) -> TokenStream {
         .collect();
 
     let result = quote! {
-      impl wasm_worklet::types::ParameterDescriptor for #ident {
-        fn descriptors() -> std::vec::Vec<wasm_worklet::types::AudioParamDescriptor> {
+      impl waw::types::ParameterDescriptor for #ident {
+        fn descriptors() -> std::vec::Vec<waw::types::AudioParamDescriptor> {
             vec![ #(#descriptors,)* ]
         }
       }

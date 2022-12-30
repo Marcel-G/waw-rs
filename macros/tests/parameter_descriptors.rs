@@ -1,8 +1,8 @@
-use wasm_worklet::types::{AudioParamDescriptor, AutomationRate, ParameterDescriptor};
+use waw::types::{AudioParamDescriptor, AutomationRate, ParameterDescriptor};
 
 #[test]
 fn parameter_descriptors_test() {
-    #[derive(wasm_worklet_macros::Param)]
+    #[derive(waw_macros::Param)]
     enum Parameters {
         #[param(
             automation_rate = "a-rate",

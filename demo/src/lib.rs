@@ -1,9 +1,9 @@
 use utils::set_panic_hook;
 use wasm_bindgen::prelude::wasm_bindgen;
 
+mod gain;
+mod oscillator;
 mod utils;
-mod worklet_a;
-mod worklet_b;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.

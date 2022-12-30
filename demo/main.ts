@@ -1,4 +1,4 @@
-import init, { WorkletANode, WorkletBNode } from "./pkg/wasm_worklet_demo";
+import init, { OscillatorNode, GainNode } from "./pkg/waw_demo";
 
 const main = async () => {
   await init();
@@ -13,20 +13,20 @@ const main = async () => {
 
   // -- Initialisation Test --
   console.log('Worklet A loading...');
-  const node_a = await WorkletANode.install(context);
+  const node_a = await OscillatorNode.install(context);
   console.log('Worklet A done');
 
   console.log('Worklet B loading...');
-  const node_b = await WorkletBNode.install(context);
+  const node_b = await GainNode.install(context);
   console.log('Worklet B done');
 
   console.log('Worklet B2 loading...');
-  const node_b2 = await WorkletBNode.install(context);
+  const node_b2 = await GainNode.install(context);
   console.log('Worklet B2 done');
 
   // -- Audio Output Test --
   // Connect node to output
-  node_a.node().connect(context.destination);
+  node_a.node().connect(node_b.node());
   node_b.node().connect(context.destination);
   node_b2.node().connect(context.destination);
 

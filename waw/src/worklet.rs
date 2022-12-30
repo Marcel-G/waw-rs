@@ -1,12 +1,12 @@
-// This is a not-so-clean approach to get the current bindgen ES module URL
-// in Rust. This will fail at run time on bindgen targets not using ES modules.
-
+use std::fmt::Debug;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc, Mutex,
 };
 
+use enum_map::EnumArray;
 use js_sys::{global, Array, Reflect};
+use serde::{Deserialize, Serialize};
 use wasm_bindgen::{
     prelude::{wasm_bindgen, Closure},
     JsCast, JsValue,
@@ -15,11 +15,49 @@ use web_sys::{
     AudioWorkletNodeOptions, AudioWorkletProcessor, Blob, BlobPropertyBag, MessageEvent, Url,
 };
 
+use crate::buffer::AudioBuffer;
+use crate::types::EventCallback;
 use crate::{
-    buffer::Buffer,
-    types::{AudioModule, AudioModuleDescriptor, InternalMessage, ParamMap, WorkletOptions},
-    utils::{environment::assert_worklet, import_meta},
+    buffer::{Param, ParamBuffer},
+    types::{AudioModuleDescriptor, InternalMessage, Never, ParameterDescriptor, WorkletOptions},
+    utils::{callback::RawHackDescribe, environment::assert_worklet, import_meta},
 };
+
+/// Audio worklet processor interface.
+pub trait AudioModule {
+    /// The type of messages sent from the audio worklet processor (audio thread) to the audio node (main thread).
+    /// 
+    /// Also see: [`derive_event!`]
+    type Event: Serialize + for<'de> Deserialize<'de> + RawHackDescribe + Clone = Never;
+
+    /// The type of messages sent from the audio node (main thread) to audio worklet processor (audio thread).
+    /// 
+    /// Also see: [`derive_command!`]
+    type Command: Serialize + for<'de> Deserialize<'de> + Clone = Never;
+
+    /// The type of parameters used by the worklet.
+    /// 
+    /// Also see: [`derive_param!`]
+    type Param: EnumArray<Param> + ParameterDescriptor + Debug = Never;
+
+    /// Number of inputs expected by the worklet.
+    const INPUTS: u32 = 1;
+
+    /// Number of outputs expected by the worklet.
+    const OUTPUTS: u32 = 1;
+
+    /// Constructor method for the worklet.
+    fn create() -> Self;
+
+    /// Setup handler for event subscription from the audio node (main thread).
+    fn add_event_listener_with_callback(&mut self, _callback: EventCallback<Self>) {}
+
+    /// Handler for commands from the audio node (main thread).
+    fn on_command(&mut self, _command: Self::Command) {}
+
+    /// Implements the audio processing algorithm for the audio processor worklet.
+    fn process(&mut self, audio: &mut AudioBuffer, params: &ParamBuffer<Self::Param>);
+}
 
 /// Returns a float that represents the sample rate of the associated BaseAudioContext.
 pub fn sample_rate() -> f64 {
@@ -29,7 +67,8 @@ pub fn sample_rate() -> f64 {
         .unwrap()
 }
 
-/// Returns a double that represents the ever-increasing context time of the audio block being processed. It is equal to the currentTime property of the BaseAudioContext the worklet belongs to.
+/// Returns a double that represents the ever-increasing context time of the audio block being processed.
+/// It is equal to the currentTime property of the BaseAudioContext the worklet belongs to.
 pub fn current_time() -> f64 {
     Reflect::get(&global(), &"currentTime".into())
         .unwrap()
@@ -37,7 +76,8 @@ pub fn current_time() -> f64 {
         .unwrap()
 }
 
-/// Returns an integer that represents the ever-increasing current sample-frame of the audio block being processed. It is incremented by 128 (the size of a render quantum) after the processing of each audio block.
+/// Returns an integer that represents the ever-increasing current sample-frame of the audio block being processed.
+/// It is incremented by 128 (the size of a render quantum) after the processing of each audio block.
 pub fn current_frame() -> usize {
     Reflect::get(&global(), &"currentFrame".into())
         .unwrap()
@@ -45,13 +85,16 @@ pub fn current_frame() -> usize {
         .unwrap() as usize
 }
 
+/// Wrapper struct for the audio worklet processor.
+///
+/// This struct is automatically generated when using the `waw::module!` macro. It should not be used directly.
+#[doc(hidden)]
 pub struct Processor<M: AudioModule> {
     rs_processor: Arc<Mutex<M>>,
     js_processor: AudioWorkletProcessor,
     enabled: Arc<AtomicBool>,
-    input: Buffer<128>,
-    output: Buffer<128>,
-    params: ParamMap<M::Param>,
+    audio: AudioBuffer,
+    params: ParamBuffer<M::Param>,
     message_callback: Option<Closure<dyn Fn(MessageEvent)>>,
 }
 
@@ -66,11 +109,9 @@ impl<M: AudioModule + 'static> Processor<M> {
 
         let options = WorkletOptions::from(js_options);
 
-        let input = Buffer::new(
+        let audio = AudioBuffer::new(
             options.number_of_inputs.try_into().unwrap(),
             options.channel_count.try_into().unwrap(),
-        );
-        let output = Buffer::new(
             options.number_of_outputs.try_into().unwrap(),
             options.output_channel_count.try_into().unwrap(),
         );
@@ -79,13 +120,13 @@ impl<M: AudioModule + 'static> Processor<M> {
             rs_processor: Arc::new(Mutex::new(rs_processor)),
             js_processor,
             enabled: Arc::new(AtomicBool::new(true)),
-            input,
-            output,
+            audio,
             params: Default::default(),
             message_callback: None,
         }
     }
-    // Setup bi-directional messaging
+
+    /// Initialise bi-directional messaging between node and worklet.
     pub fn connect(&mut self) {
         // Add handler for inbound commands to module.
         let rs_processor = self.rs_processor.clone();
@@ -129,25 +170,17 @@ impl<M: AudioModule + 'static> Processor<M> {
         self.js_processor.port().unwrap().start();
     }
 
-    //  Each channel has 128 samples. Inputs[n][m][i] will access n-th input,
-    //  m-th channel of that input, and i-th sample of that channel.
-    //  https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletProcessor/process
-    //
-    //  The number of inputs and thus the length of that array is fixed at the construction of the node (see AudioWorkletNode).
-    //  If there is no active node connected to the n-th input of the node, inputs[n] will be an empty array (zero input channels available).
-    //  The number of channels in each input may vary, depending on channelCount and channelCountMode properties.
-    //
+    /// Wrapper to convert JS process args into Rust structs
     pub fn process(&mut self, input: &Array, output: &Array, params: &JsValue) -> bool {
-        self.input.copy_from(input);
-        self.params.copy_from(params);
+        self.audio.copy_from_input(input);
+        self.params.copy_from_params(params);
 
-        self.rs_processor.lock().unwrap().process(
-            self.input.get_ref(),
-            self.output.get_mut(),
-            &self.params,
-        );
+        self.rs_processor
+            .lock()
+            .unwrap()
+            .process(&mut self.audio, &self.params);
 
-        self.output.copy_to(output);
+        self.audio.copy_to_output(output);
 
         self.enabled.load(Ordering::Relaxed)
     }
@@ -174,13 +207,8 @@ fn js_source<M: AudioModuleDescriptor>() -> String {
 
         async init(wasm_src) {{
           if (wasm_src) {{
-            globalThis._module = await WebAssembly.compile(wasm_src);
-          }}
-
-          if (globalThis._module) {{
-            await init(globalThis._module);
-          }} else {{
-            throw new Error(\"Failed to initialize wasm module\")
+            const module = await WebAssembly.compile(wasm_src);
+            bindgen.initSync(module);
           }}
 
           this.processor = new bindgen.{processor_name}(this);
@@ -203,23 +231,26 @@ fn js_source<M: AudioModuleDescriptor>() -> String {
     )
 }
 
-// Creates a small JS module to connect the js worklet to the rust worklet.
+/// Creates a small JS module to load the wasm module into the AudioWorkletGlobalScope.
 // It is created at runtime and served via a Blob URL.
+//
+// This is added to the AudioWorklet with add_module (however, no module is actually registered)
+// We assume that all worklets share the same global scope.
 //
 // Ideally this `.js` file would be generated at compile time however, there is currently no way
 // to reference the wasm-bindgen `.js` file at build time.
 // https://github.com/rustwasm/wasm-bindgen/pull/3032
-pub fn register_processor<Module: AudioModuleDescriptor>() -> Result<String, JsValue> {
+pub(crate) fn register_wasm() -> Result<String, JsValue> {
     // Get the URL of the current wasm module
     let url = import_meta::url_js();
-    let js_source = js_source::<Module>();
 
     // Connect up the JS Processor to the Rust processor
     let worklet_processor_js = format!(
         "
-      import init, * as bindgen from \"{url}\";
-
-      {js_source}
+      import _init, * as _bindgen from \"{url}\";
+      
+      globalThis.bindgen ||= _bindgen
+      globalThis.init ||= _init 
     "
     );
 
@@ -228,6 +259,19 @@ pub fn register_processor<Module: AudioModuleDescriptor>() -> Result<String, JsV
     // Create a Blob so that the browser can download the js code from a URL
     Url::create_object_url_with_blob(&Blob::new_with_str_sequence_and_options(
         &js_sys::Array::of1(&JsValue::from(worklet_processor_js)),
+        BlobPropertyBag::new().type_("text/javascript"),
+    )?)
+}
+
+/// Creates a small JS module to connect the js worklet to the rust worklet.
+// It is created at runtime and served via a Blob URL. @todo - This could probably be generated at build time.
+pub(crate) fn register_processor<Module: AudioModuleDescriptor>() -> Result<String, JsValue> {
+    // Get the URL of the current wasm module
+    let js_source = js_source::<Module>();
+
+    // Create a Blob so that the browser can download the js code from a URL
+    Url::create_object_url_with_blob(&Blob::new_with_str_sequence_and_options(
+        &js_sys::Array::of1(&JsValue::from(js_source)),
         BlobPropertyBag::new().type_("text/javascript"),
     )?)
 }
