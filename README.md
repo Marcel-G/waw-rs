@@ -1,13 +1,10 @@
+# waw-rs
+
 `waw-rs` should help you create WebAudio Worklets using Rust, without crying.
 
 I would recommend to read [WebAssembly/Rust Tutorial: Pitch-perfect Audio Processing](https://www.toptal.com/webassembly/webassembly-rust-tutorial-web-audio)
 
 This is very all very experimental.
-
-## Features
-
-- Define event types, message types and audio params all from Rust
-- Works in Chrome, Firefox & Safari
 
 ## Usage
 
