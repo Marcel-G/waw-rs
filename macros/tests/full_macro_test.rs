@@ -8,7 +8,7 @@ use waw::{
 use waw_macros::{ParameterDescriptor, RawHackDescribe};
 
 #[test]
-fn audio_worklet_test() {
+fn full_macro_test() {
     #[derive(Serialize, Deserialize, Tsify, Clone, RawHackDescribe)]
     #[tsify(into_wasm_abi, from_wasm_abi)]
     #[serde(crate = "waw::serde")]
@@ -82,5 +82,5 @@ fn audio_worklet_test() {
         }
     }
 
-    waw_macros::module!(TestWorklet);
+    waw_macros::main!(TestWorklet);
 }

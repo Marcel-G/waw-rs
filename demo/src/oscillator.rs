@@ -68,4 +68,4 @@ impl AudioModule for Oscillator {
     }
 }
 
-waw::module!(Oscillator);
+waw::main!(Oscillator);

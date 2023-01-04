@@ -22,4 +22,4 @@ impl AudioModule for Gain {
     }
 }
 
-waw::module!(Gain);
+waw::main!(Gain);

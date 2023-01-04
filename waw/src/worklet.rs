@@ -104,7 +104,7 @@ pub fn current_frame() -> usize {
 
 /// Wrapper struct for the audio worklet processor.
 ///
-/// This struct is automatically generated when using the `waw::module!` macro. It should not be used directly.
+/// This struct is automatically generated when using the `waw::main!` macro. It should not be used directly.
 #[doc(hidden)]
 pub struct Processor<M: AudioModule> {
     rs_processor: Arc<Mutex<M>>,

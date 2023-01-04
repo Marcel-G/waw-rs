@@ -25,7 +25,7 @@ You can generate a new RustWasm project using:
 wasm-pack new <project_name>
 ```
 
-Then, in your Rust code, simply implement the `AudioModule` trait and call the `waw::module!` macro on your struct:
+Then, in your Rust code, simply implement the `AudioModule` trait and call the `waw::main!` macro on your struct:
 
 `src/lib.rs`
 
@@ -44,7 +44,7 @@ impl AudioModule for MyWorklet {
   }
 }
 
-waw::module!(MyWorklet);
+waw::main!(MyWorklet);
 ```
 
 Building the project with `wasm-pack` will generate [AudioWorkletProcessor](https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletProcessor) and corresponding [AudioWorkletNode](https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletNode).

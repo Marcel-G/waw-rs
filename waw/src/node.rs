@@ -24,7 +24,7 @@ lazy_static! {
 
 /// Wrapper struct for the audio worklet node.
 ///
-/// This struct is automatically generated when using the [`module!`]. It should not be used directly.
+/// This struct is automatically generated when using the [`main!`]. It should not be used directly.
 pub struct Node<Module: AudioModule + AudioModuleDescriptor> {
     /// The inner AudioWorkletNode
     pub inner: AudioWorkletNode,

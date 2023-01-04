@@ -33,7 +33,7 @@ pub use waw_macros as derive;
 
 /// Generates the JS bindings
 ///
-/// Given a struct implementing `AudioModule`, the [`module!`] will enable wasm-bindgen to
+/// Given a struct implementing `AudioModule`, the [`main!`] will enable wasm-bindgen to
 /// generate the neccesary JS to connect the Rust worklet to the WebAudio API.
 ///
 /// ```
@@ -50,6 +50,6 @@ pub use waw_macros as derive;
 ///     // Implement process
 ///   }
 /// }
-/// waw::module!(MyWorklet);
+/// waw::main!(MyWorklet);
 /// ```
-pub use waw_macros::module;
+pub use waw_macros::main;
