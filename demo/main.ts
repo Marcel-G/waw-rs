@@ -54,7 +54,7 @@ const main = async () => {
   frequencyControl.addEventListener(
     "input",
     () => {
-      frequency.value = parseInt(frequencyControl.value, 10);
+      frequency.value = parseInt(frequencyControl.value, 10)
     },
     false
   );

@@ -1,3 +1,5 @@
+use std::f32::consts::PI;
+
 use waw::{
     buffer::{AudioBuffer, ParamBuffer},
     worklet::{sample_rate, AudioModule, Emitter},
@@ -26,8 +28,9 @@ pub enum OscillatorParams {
 }
 
 // Let's implement a simple sine oscillator with variable frequency
+// It also accepts commands that send back dummy events for demonstration
 pub struct Oscillator {
-    accumulator: f32,
+    phase: u32,
     emitter: Emitter<OscillatorEvent>,
 }
 
@@ -38,7 +41,7 @@ impl AudioModule for Oscillator {
 
     fn create(emitter: Emitter<Self::Event>) -> Self {
         Self {
-            accumulator: 0.0,
+            phase: 0,
             emitter,
         }
     }
@@ -52,18 +55,18 @@ impl AudioModule for Oscillator {
     }
 
     fn process(&mut self, audio: &mut AudioBuffer, params: &ParamBuffer<Self::Param>) {
-        // @todo -- the pitch seems to randomly drift...
         let frequency = params.get(OscillatorParams::Frequency);
         let sr = sample_rate() as f32;
 
         for (_, output) in audio.zip() {
-            // For each input sample and output sample in buffer
-            for out_channel in output.channel_iter_mut() {
-                for (freq, out_sample) in frequency.iter().zip(out_channel.iter_mut()) {
-                    self.accumulator += freq / sr;
-                    *out_sample = self.accumulator.sin();
-                }
+            // Write to the first output channel
+            for (freq, out_sample) in frequency.iter().zip(output.channel_mut(0).unwrap().iter_mut()) {
+                let t = self.phase as f32 / sr;
+                *out_sample = (t * freq * 2.0 * PI).sin();
+
+                self.phase = (self.phase + 1) % sr as u32;
             }
+            
         }
     }
 }
