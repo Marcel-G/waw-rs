@@ -1,8 +1,9 @@
 use waw::types::{AudioParamDescriptor, AutomationRate, ParameterDescriptor};
+use waw_macros::ParameterDescriptor;
 
 #[test]
 fn parameter_descriptors_test() {
-    #[derive(waw_macros::Param)]
+    #[derive(ParameterDescriptor)]
     enum Parameters {
         #[param(
             automation_rate = "a-rate",

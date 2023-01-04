@@ -11,7 +11,7 @@ use crate::{inform_char, utils::callback::RawHackDescribe, worklet::AudioModule}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum InternalMessage {
-    Destroy,
+    Destroy = 910,
 }
 
 #[derive(Serialize, Debug, PartialEq, Eq)]

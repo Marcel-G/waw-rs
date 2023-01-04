@@ -1,4 +1,5 @@
 use std::fmt::Debug;
+use std::marker::PhantomData;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc, Mutex,
@@ -6,39 +7,58 @@ use std::sync::{
 
 use enum_map::EnumArray;
 use js_sys::{global, Array, Reflect};
-use serde::{Deserialize, Serialize};
+use wasm_bindgen::convert::FromWasmAbi;
 use wasm_bindgen::{
     prelude::{wasm_bindgen, Closure},
     JsCast, JsValue,
 };
 use web_sys::{
-    AudioWorkletNodeOptions, AudioWorkletProcessor, Blob, BlobPropertyBag, MessageEvent, Url,
+    AudioWorkletNodeOptions, AudioWorkletProcessor, Blob, BlobPropertyBag, MessageEvent,
+    MessagePort, Url,
 };
 
 use crate::buffer::AudioBuffer;
-use crate::types::EventCallback;
 use crate::{
     buffer::{Param, ParamBuffer},
     types::{AudioModuleDescriptor, InternalMessage, Never, ParameterDescriptor, WorkletOptions},
-    utils::{callback::RawHackDescribe, environment::assert_worklet, import_meta},
+    utils::{environment::assert_worklet, import_meta},
 };
+
+/// Used to communicate from the audio thread to the main thread
+pub struct Emitter<E> {
+    port: MessagePort,
+    _phantom: PhantomData<E>,
+}
+
+impl<E: Into<JsValue>> Emitter<E> {
+    /// Construct a new emitter
+    pub fn new(port: MessagePort) -> Self {
+        Self {
+            port,
+            _phantom: PhantomData,
+        }
+    }
+
+    /// Sends a message to the main thread
+    pub fn send(&self, event: E) {
+        self.port.post_message(&event.into()).ok();
+    }
+}
 
 /// Audio worklet processor interface.
 pub trait AudioModule {
     /// The type of messages sent from the audio worklet processor (audio thread) to the audio node (main thread).
-    /// 
-    /// Also see: [`derive_event!`]
-    type Event: Serialize + for<'de> Deserialize<'de> + RawHackDescribe + Clone = Never;
+    type Event: From<JsValue> + Into<JsValue> + FromWasmAbi = Never;
 
     /// The type of messages sent from the audio node (main thread) to audio worklet processor (audio thread).
-    /// 
-    /// Also see: [`derive_command!`]
-    type Command: Serialize + for<'de> Deserialize<'de> + Clone = Never;
+    ///
+    /// Commands are first converted from JS to WASM over ABI (main thread).
+    /// Then, to JsValue for transmission via postMessage and
+    /// then finally from JsValue in the worklet.
+    type Command: From<JsValue> + Into<JsValue> + FromWasmAbi = Never;
 
     /// The type of parameters used by the worklet.
-    /// 
-    /// Also see: [`derive_param!`]
-    type Param: EnumArray<Param> + ParameterDescriptor + Debug = Never;
+    type Param: EnumArray<Param> + ParameterDescriptor + Debug + FromWasmAbi = Never;
 
     /// Number of inputs expected by the worklet.
     const INPUTS: u32 = 1;
@@ -47,10 +67,7 @@ pub trait AudioModule {
     const OUTPUTS: u32 = 1;
 
     /// Constructor method for the worklet.
-    fn create() -> Self;
-
-    /// Setup handler for event subscription from the audio node (main thread).
-    fn add_event_listener_with_callback(&mut self, _callback: EventCallback<Self>) {}
+    fn create(emitter: Emitter<Self::Event>) -> Self;
 
     /// Handler for commands from the audio node (main thread).
     fn on_command(&mut self, _command: Self::Command) {}
@@ -133,6 +150,7 @@ impl<M: AudioModule + 'static> Processor<M> {
         let enabled = self.enabled.clone();
         let callback = Closure::wrap(Box::new(move |event: MessageEvent| {
             if let Ok(internal_message) =
+                // maybe convert this to a JS Symbol
                 serde_wasm_bindgen::from_value::<InternalMessage>(event.data())
             {
                 match internal_message {
@@ -141,9 +159,7 @@ impl<M: AudioModule + 'static> Processor<M> {
                     }
                 }
             } else {
-                let message = serde_wasm_bindgen::from_value::<M::Command>(event.data()).unwrap(); // @todo message parsing handle error
-
-                rs_processor.lock().unwrap().on_command(message);
+                rs_processor.lock().unwrap().on_command(event.data().into());
             }
         }) as Box<dyn Fn(MessageEvent)>);
 
@@ -154,18 +170,6 @@ impl<M: AudioModule + 'static> Processor<M> {
             .unwrap();
 
         self.message_callback = Some(callback);
-
-        // Add handler for outbound events from module.
-        let port = self.js_processor.port().unwrap();
-
-        self.rs_processor
-            .lock()
-            .unwrap()
-            .add_event_listener_with_callback(Box::new(move |event: M::Event| {
-                let event = serde_wasm_bindgen::to_value(&event).expect("should work"); // @todo
-
-                port.post_message(&event).expect("Failed to post message");
-            }));
 
         self.js_processor.port().unwrap().start();
     }

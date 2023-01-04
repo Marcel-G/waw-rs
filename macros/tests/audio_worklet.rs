@@ -3,19 +3,30 @@ use waw::{
     buffer::{AudioBuffer, ParamBuffer},
     enum_map::Enum,
     serde::{Deserialize, Serialize},
-    types::EventCallback,
-    worklet::AudioModule,
+    worklet::{AudioModule, Emitter},
 };
-use waw_macros::RawDescribe;
+use waw_macros::{ParameterDescriptor, RawHackDescribe};
 
 #[test]
 fn audio_worklet_test() {
-    #[derive(Serialize, Deserialize, Tsify, Clone, RawDescribe)]
+    #[derive(Serialize, Deserialize, Tsify, Clone, RawHackDescribe)]
     #[tsify(into_wasm_abi, from_wasm_abi)]
     #[serde(crate = "waw::serde")]
     pub enum TestEvent {
         One(bool),
         Two,
+    }
+
+    impl From<JsValue> for TestEvent {
+        fn from(value: JsValue) -> Self {
+            Self::from_js(value).unwrap()
+        }
+    }
+
+    impl From<TestEvent> for JsValue {
+        fn from(val: TestEvent) -> Self {
+            val.into_js().unwrap().into()
+        }
     }
 
     #[derive(Serialize, Deserialize, Tsify, Clone)]
@@ -26,7 +37,19 @@ fn audio_worklet_test() {
         Four,
     }
 
-    #[derive(waw_macros::Param, Serialize, Deserialize, Enum, Debug, Tsify)]
+    impl From<JsValue> for TestCommand {
+        fn from(value: JsValue) -> Self {
+            Self::from_js(value).unwrap()
+        }
+    }
+
+    impl From<TestCommand> for JsValue {
+        fn from(val: TestCommand) -> Self {
+            val.into_js().unwrap().into()
+        }
+    }
+
+    #[derive(ParameterDescriptor, Serialize, Deserialize, Enum, Debug, Tsify)]
     #[tsify(into_wasm_abi, from_wasm_abi)]
     #[serde(crate = "waw::serde")]
     pub enum TestParam {
@@ -35,7 +58,7 @@ fn audio_worklet_test() {
     }
 
     pub struct TestWorklet {
-        send_message: Option<EventCallback<TestWorklet>>,
+        emitter: Emitter<TestEvent>,
     }
 
     impl AudioModule for TestWorklet {
@@ -43,18 +66,14 @@ fn audio_worklet_test() {
         type Command = TestCommand;
         type Param = TestParam;
 
-        fn create() -> Self {
-            TestWorklet { send_message: None }
-        }
-
-        fn add_event_listener_with_callback(&mut self, send_event: EventCallback<Self>) {
-            self.send_message = Some(send_event);
+        fn create(emitter: Emitter<TestEvent>) -> Self {
+            TestWorklet { emitter }
         }
 
         fn on_command(&mut self, command: Self::Command) {
             match command {
-                TestCommand::Three(_) => self.send_message.as_ref().unwrap()(TestEvent::One(false)),
-                TestCommand::Four => self.send_message.as_ref().unwrap()(TestEvent::Two),
+                TestCommand::Three(_) => self.emitter.send(TestEvent::One(false)),
+                TestCommand::Four => self.emitter.send(TestEvent::Two),
             }
         }
 

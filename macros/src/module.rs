@@ -4,7 +4,7 @@ use quote::quote;
 use syn::{parse_macro_input, Ident};
 
 fn processor(ident: &Ident) -> proc_macro2::TokenStream {
-    let worklet_ident = ProcIdent::new(&format!("{ident}Processor"), Span::call_site());
+    let worklet_ident = ProcIdent::new(&format!("_{ident}Processor"), Span::call_site());
 
     let worklet_ident_name = worklet_ident.to_string();
 
@@ -18,8 +18,11 @@ fn processor(ident: &Ident) -> proc_macro2::TokenStream {
       impl #worklet_ident {
         #[wasm_bindgen(constructor)]
         pub fn new(js_processor: waw::web_sys::AudioWorkletProcessor) -> Self {
+          let emitter = waw::worklet::Emitter::<
+            <#ident as waw::worklet::AudioModule>::Event
+          >::new(js_processor.port().unwrap());
           #worklet_ident (waw::worklet::Processor::new(
-            #ident::create(),
+            #ident::create(emitter),
             js_processor
           ))
         }
@@ -56,10 +59,10 @@ fn node(ident: &Ident) -> proc_macro2::TokenStream {
     let node_ident = ProcIdent::new(&format!("{ident}Node"), Span::call_site());
 
     quote! {
-      #[wasm_bindgen]
+      #[wasm_bindgen(js_name = #ident)]
       pub struct #node_ident (waw::node::Node<#ident>);
 
-      #[wasm_bindgen]
+      #[wasm_bindgen(js_class = #ident)]
       impl #node_ident {
           pub async fn install(ctx: waw::web_sys::AudioContext) -> Result<#node_ident, wasm_bindgen::JsValue> {
               let result = waw::node::Node::<#ident>::install(ctx).await?;

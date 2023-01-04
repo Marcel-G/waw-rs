@@ -1,4 +1,5 @@
 #![feature(associated_type_defaults)]
+#![feature(stmt_expr_attributes)]
 #![doc = include_str!("../../README.md")]
 #![warn(missing_docs)]
 
@@ -6,12 +7,12 @@
 pub mod buffer;
 /// Audio node bindings (main thread)
 pub mod node;
-/// Audio worklet bindings (audio thread)
-pub mod worklet;
 #[doc(hidden)]
 pub mod types;
 #[doc(hidden)]
 pub mod utils;
+/// Audio worklet bindings (audio thread)
+pub mod worklet;
 
 // Re-export dependencies that are used in macros.
 #[doc(hidden)]
@@ -28,23 +29,23 @@ pub use tsify;
 pub use web_sys;
 
 #[doc(hidden)]
-pub use waw_macros;
+pub use waw_macros as derive;
 
 /// Generates the JS bindings
-/// 
+///
 /// Given a struct implementing `AudioModule`, the [`module!`] will enable wasm-bindgen to
 /// generate the neccesary JS to connect the Rust worklet to the WebAudio API.
 ///
 /// ```
 /// use waw::{
-///   worklet::AudioModule,
+///   worklet::{ AudioModule, Emitter },
 ///   buffer::{ AudioBuffer, ParamBuffer }
 /// };
-/// 
+///
 /// struct MyWorklet;
-/// 
+///
 /// impl AudioModule for MyWorklet {
-///   fn create() -> Self { MyWorklet }
+///   fn create(_emitter: Emitter<Self::Event>) -> Self { MyWorklet }
 ///   fn process(&mut self, audio: &mut AudioBuffer, params: &ParamBuffer<Self::Param>) {
 ///     // Implement process
 ///   }
@@ -52,5 +53,3 @@ pub use waw_macros;
 /// waw::module!(MyWorklet);
 /// ```
 pub use waw_macros::module;
-
-

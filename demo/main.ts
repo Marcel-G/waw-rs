@@ -1,4 +1,4 @@
-import init, { OscillatorNode, GainNode } from "./pkg/waw_demo";
+import init, { Oscillator, Gain } from "./pkg/waw_demo";
 
 const main = async () => {
   await init();
@@ -13,15 +13,15 @@ const main = async () => {
 
   // -- Initialisation Test --
   console.log('Worklet A loading...');
-  const node_a = await OscillatorNode.install(context);
+  const node_a = await Oscillator.install(context);
   console.log('Worklet A done');
 
   console.log('Worklet B loading...');
-  const node_b = await GainNode.install(context);
+  const node_b = await Gain.install(context);
   console.log('Worklet B done');
 
   console.log('Worklet B2 loading...');
-  const node_b2 = await GainNode.install(context);
+  const node_b2 = await Gain.install(context);
   console.log('Worklet B2 done');
 
   // -- Audio Output Test --

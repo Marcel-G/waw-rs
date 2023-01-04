@@ -109,7 +109,7 @@ impl<Module: AudioModule + AudioModuleDescriptor> Node<Module> {
         self.inner
             .port()
             .unwrap()
-            .post_message(&serde_wasm_bindgen::to_value(&message).unwrap())
+            .post_message(&message.into())
             .unwrap();
     }
 

@@ -1,12 +1,12 @@
 use waw::{
     buffer::{AudioBuffer, ParamBuffer},
-    worklet::AudioModule,
+    worklet::{AudioModule, Emitter},
 };
 
 pub struct Gain;
 
 impl AudioModule for Gain {
-    fn create() -> Self {
+    fn create(_emitter: Emitter<Self::Event>) -> Self {
         Gain
     }
 

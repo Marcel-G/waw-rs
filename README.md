@@ -31,14 +31,14 @@ Then, in your Rust code, simply implement the `AudioModule` trait and call the `
 
 ```rust
 use waw::{
-  worklet::AudioModule,
+  worklet::{ AudioModule, Emitter },
   buffer::{ AudioBuffer, ParamBuffer }
 };
 
 struct MyWorklet;
 
 impl AudioModule for MyWorklet {
-  fn create() -> Self { MyWorklet }
+  fn create(_emitter: Emitter<Self::Event>) -> Self { MyWorklet }
   fn process(&mut self, audio: &mut AudioBuffer, params: &ParamBuffer<Self::Param>) {
     // Implement process
   }
@@ -56,7 +56,7 @@ wasm-pack build --target web
 They can then be used from JavaScript:
 
 ```typescript
-import init, { MyWorkletNode } from "./pkg/<project_name>";
+import init, { MyWorklet } from "./pkg/<project_name>";
 
 const main = async () => {
   // Initialise the wasm module
@@ -66,10 +66,10 @@ const main = async () => {
   const context = new AudioContext();
 
   // Call install on the generated worklet node
-  const node = await MyWorkletNode.install(context);
+  const worklet = await MyWorklet.install(context);
 
   // Connect the audio node to WebAudio graph
-  node.node().connect(context.destination);
+  worklet.node().connect(context.destination);
 
   // Wait for some interaction on the page before starting the audio
   const handle_interaction = () => {
