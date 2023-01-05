@@ -60,13 +60,13 @@ pub fn derive_event(_metadata: TokenStream, input: TokenStream) -> proc_macro::T
             #[serde(crate = "waw::serde")]
             #derive
 
-            impl From<JsValue> for #ident {
-                fn from(value: JsValue) -> Self {
+            impl From<wasm_bindgen::JsValue> for #ident {
+                fn from(value: wasm_bindgen::JsValue) -> Self {
                     Self::from_js(value).unwrap()
                 }
             }
 
-            impl From<#ident> for JsValue {
+            impl From<#ident> for wasm_bindgen::JsValue {
                 fn from(val: #ident) -> Self {
                     val.into_js().unwrap().into()
                 }
@@ -96,13 +96,13 @@ pub fn derive_command(_metadata: TokenStream, input: TokenStream) -> proc_macro:
             #[serde(crate = "waw::serde")]
             #derive
 
-            impl From<JsValue> for #ident {
-                fn from(value: JsValue) -> Self {
+            impl From<wasm_bindgen::JsValue> for #ident {
+                fn from(value: wasm_bindgen::JsValue) -> Self {
                     Self::from_js(value).unwrap()
                 }
             }
 
-            impl From<#ident> for JsValue {
+            impl From<#ident> for wasm_bindgen::JsValue {
                 fn from(val: #ident) -> Self {
                     val.into_js().unwrap().into()
                 }
@@ -138,18 +138,6 @@ pub fn derive_param(_metadata: TokenStream, input: TokenStream) -> proc_macro::T
             #[tsify(into_wasm_abi, from_wasm_abi)]
             #[serde(crate = "waw::serde")]
             #derive
-
-            impl From<JsValue> for #ident {
-                fn from(value: JsValue) -> Self {
-                    Self::from_js(value).unwrap()
-                }
-            }
-
-            impl From<#ident> for JsValue {
-                fn from(val: #ident) -> Self {
-                    val.into_js().unwrap().into()
-                }
-            }
         }
         use #module::#ident;
     }

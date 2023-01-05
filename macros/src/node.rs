@@ -1,7 +1,7 @@
-use proc_macro::TokenStream;
+
 use proc_macro2::{Ident as ProcIdent, Span};
 use quote::quote;
-use syn::{parse_macro_input, Ident};
+use syn::{Ident};
 
 // Generates the node wrapper to bind with JS
 pub fn node_wrapper(ident: &Ident) -> proc_macro2::TokenStream {

@@ -25,6 +25,7 @@ use crate::{
 };
 
 /// Used to communicate from the audio thread to the main thread
+#[derive(Clone)]
 pub struct Emitter<E> {
     port: MessagePort,
     _phantom: PhantomData<E>,
