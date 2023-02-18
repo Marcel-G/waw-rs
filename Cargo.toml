@@ -3,6 +3,8 @@ resolver = "2"
 
 members = [
     "waw",
-    "demo",
+    "demo/app",
+    "demo/xtask",
     "macros",
+    "xtask-waw"
 ]

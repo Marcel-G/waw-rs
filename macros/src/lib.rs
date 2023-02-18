@@ -1,8 +1,8 @@
 use node::node_wrapper;
+mod node;
 mod parameter_descriptor;
 mod raw_hack_describe;
 mod worklet;
-mod node;
 
 use proc_macro::TokenStream;
 
@@ -10,7 +10,6 @@ use proc_macro2::{Ident as ProcIdent, Span};
 use quote::quote;
 use syn::{parse_macro_input, DeriveInput, Ident};
 use worklet::worklet_wrapper;
-
 
 #[proc_macro_derive(ParameterDescriptor, attributes(param))]
 pub fn derive_parameters(input: TokenStream) -> TokenStream {

@@ -14,13 +14,8 @@ To use waw-rs in your project, add it as a dependency in your Cargo.toml:
 waw = { git = "https://github.com/Marcel-G/waw-rs" }
 ```
 
-To build the wasm module & JS bindings, you can use [wasm-pack](https://rustwasm.github.io/wasm-pack/)
+You will need to setup an xtask to build the project, see [xtask-waw](xtask-waw/README.md).
 
-You can generate a new RustWasm project using:
-
-```bash
-wasm-pack new <project_name>
-```
 
 Then, in your Rust code, simply implement the `AudioModule` trait and call the `waw::main!` macro on your struct:
 
@@ -44,20 +39,26 @@ impl AudioModule for MyWorklet {
 waw::main!(MyWorklet);
 ```
 
-Building the project with `wasm-pack` will generate [AudioWorkletProcessor](https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletProcessor) and corresponding [AudioWorkletNode](https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletNode).
+Run the build using the xtask command
 
 ```bash
-wasm-pack build --target web
+cargo xtask dist
 ```
 
 They can then be used from JavaScript:
 
 ```typescript
-import init, { MyWorklet } from "./pkg/<project_name>";
+import init, { init_worklet, Oscillator, Gain } from './pkg/waw-demo';
+import worklet_url from './pkg/waw-demo.worklet.js?url&worker';
+// Note: waw-demo.worklet.js must be loaded as a URL - bundlers may need different config for this
 
 const main = async () => {
-  // Initialise the wasm module
+  const context = new AudioContext();
+
+  // Init WASM on the main thread
   await init();
+  // Init WASM on the audio worklet thread
+  await init_worklet(context, worklet_url)
 
   // Create an audio context
   const context = new AudioContext();
@@ -78,7 +79,7 @@ const main = async () => {
 main();
 ```
 
-See the [demo project](https://github.com/Marcel-G/waw-rs/tree/main/demo) for a full example.
+See the [demo project](demo/app) for a full example.
 
 ## Links
 

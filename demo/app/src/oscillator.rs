@@ -40,10 +40,7 @@ impl AudioModule for Oscillator {
     type Param = OscillatorParams;
 
     fn create(emitter: Emitter<Self::Event>) -> Self {
-        Self {
-            phase: 0,
-            emitter,
-        }
+        Self { phase: 0, emitter }
     }
 
     fn on_command(&mut self, command: Self::Command) {
@@ -60,13 +57,15 @@ impl AudioModule for Oscillator {
 
         for (_, output) in audio.zip() {
             // Write to the first output channel
-            for (freq, out_sample) in frequency.iter().zip(output.channel_mut(0).unwrap().iter_mut()) {
+            for (freq, out_sample) in frequency
+                .iter()
+                .zip(output.channel_mut(0).unwrap().iter_mut())
+            {
                 let t = self.phase as f32 / sr;
                 *out_sample = (t * freq * 2.0 * PI).sin();
 
                 self.phase = (self.phase + 1) % sr as u32;
             }
-            
         }
     }
 }

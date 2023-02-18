@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "prebuild": "wasm-pack build --target web"
+    "prebuild": "cargo xtask dist"
   },
   "dependencies": {
     "vite": "^3.2.2"

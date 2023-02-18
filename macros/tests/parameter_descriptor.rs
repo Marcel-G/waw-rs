@@ -3,6 +3,7 @@ use waw_macros::ParameterDescriptor;
 
 #[test]
 fn parameter_descriptors_test() {
+    #[allow(dead_code)]
     #[derive(ParameterDescriptor)]
     enum Parameters {
         #[param(

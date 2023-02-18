@@ -1,9 +1,13 @@
-import init, { Oscillator, Gain } from "./pkg/waw_demo";
+import init, { init_worklet, Oscillator, Gain } from './pkg/waw-demo';
+import worklet_url from './pkg/waw-demo.worklet.js?url&worker';
 
 const main = async () => {
-  await init();
-
   const context = new AudioContext();
+
+  // Init WASM on the main thread
+  await init();
+  // Init WASM on the audio worklet thread
+  await init_worklet(context, worklet_url)
 
   // Wait for some interaction on the page before starting the audio
   const handle_interaction = () => {
@@ -11,39 +15,29 @@ const main = async () => {
   }
   document.addEventListener('click', handle_interaction, { once: true })
 
-  // -- Initialisation Test --
-  console.log('Worklet A loading...');
+  // Create audio worklet nodes with `install`
   const node_a = await Oscillator.install(context);
-  console.log('Worklet A done');
-
-  console.log('Worklet B loading...');
   const node_b = await Gain.install(context);
-  console.log('Worklet B done');
-
-  console.log('Worklet B2 loading...');
   const node_b2 = await Gain.install(context);
-  console.log('Worklet B2 done');
 
-  // -- Audio Output Test --
   // Connect node to output
   node_a.node().connect(node_b.node());
   node_b.node().connect(context.destination);
   node_b2.node().connect(context.destination);
 
-  // -- Command Test --
+  // Call commands on the nodes
   let count = 0;
   setInterval(() => {
     count++;
     node_a.command({ Count: count });
   }, 1000);
 
-  // -- Subscribe Test --
+  // Subscribe to events on the nodes
   node_a.subscribe((event) => {
     console.log("Got some event", event)
   })
 
-  // -- AudioParam Test --
-  // Get the frequency AudioParam
+  // Get audio parameters
   const frequency = node_a.get_param('Frequency');
 
   // Connect frequency AudioParam to the slider

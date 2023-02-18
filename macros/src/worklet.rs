@@ -1,6 +1,6 @@
 use proc_macro2::{Ident as ProcIdent, Span};
 use quote::quote;
-use syn::{Ident};
+use syn::Ident;
 
 // Generates the worklet wrapper to bind with JS in the audio thread
 pub fn worklet_wrapper(ident: &Ident) -> proc_macro2::TokenStream {
@@ -38,6 +38,10 @@ pub fn worklet_wrapper(ident: &Ident) -> proc_macro2::TokenStream {
           params: &wasm_bindgen::JsValue
         ) -> bool {
           self.0.process(input, output, params)
+        }
+
+        pub fn parameter_descriptor() -> String {
+          <#ident as waw::types::AudioModuleDescriptor>::parameter_descriptor_json()
         }
       }
 

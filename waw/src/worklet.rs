@@ -12,16 +12,19 @@ use wasm_bindgen::{
     prelude::{wasm_bindgen, Closure},
     JsCast, JsValue,
 };
+use wasm_bindgen_futures::JsFuture;
 use web_sys::{
-    AudioWorkletNodeOptions, AudioWorkletProcessor, Blob, BlobPropertyBag, MessageEvent,
-    MessagePort, Url,
+    AudioContext, AudioWorkletNode, AudioWorkletNodeOptions, AudioWorkletProcessor, MessageEvent,
+    MessagePort,
 };
 
 use crate::buffer::AudioBuffer;
+use crate::node::wait_for_any_response;
+use crate::utils::environment::assert_main;
 use crate::{
     buffer::{Param, ParamBuffer},
-    types::{AudioModuleDescriptor, InternalMessage, Never, ParameterDescriptor, WorkletOptions},
-    utils::{environment::assert_worklet, import_meta},
+    types::{InternalMessage, Never, ParameterDescriptor, WorkletOptions},
+    utils::environment::assert_worklet,
 };
 
 /// Used to communicate from the audio thread to the main thread
@@ -191,111 +194,41 @@ impl<M: AudioModule + 'static> Processor<M> {
     }
 }
 
-fn js_source<M: AudioModuleDescriptor>() -> String {
-    let processor_name = M::processor_name();
-    let parameter_descriptors = M::parameter_descriptor_json();
-
-    format!(
-        "
-    registerProcessor(
-      \"{processor_name}\",
-      class {processor_name} extends AudioWorkletProcessor {{
-        static get parameterDescriptors() {{
-          return {parameter_descriptors}
-        }}
-        constructor(options) {{
-          super();
-          this.options = options;
-          const [wasm_src] = options.processorOptions || [];
-          this.init(wasm_src)
-        }}
-
-        async init(wasm_src) {{
-          if (wasm_src) {{
-            const module = await WebAssembly.compile(wasm_src);
-            bindgen.initSync(module);
-          }}
-
-          this.processor = new bindgen.{processor_name}(this);
-      
-          this.port.postMessage({{ method: 'send_wasm_program_done' }})
-
-          this.processor.connect();
-        }}
-
-        process(inputs, outputs, parameters) {{
-            if (this.processor && !this.processor.process(inputs, outputs, parameters)) {{
-                this.processor.free();
-                return false;
-            }};
-            return true
-        }}
-      }}
-    );
-  "
-    )
-}
-
-/// Creates a small JS module to load the wasm module into the AudioWorkletGlobalScope.
-// It is created at runtime and served via a Blob URL.
-//
-// This is added to the AudioWorklet with add_module (however, no module is actually registered)
-// We assume that all worklets share the same global scope.
-//
-// Ideally this `.js` file would be generated at compile time however, there is currently no way
-// to reference the wasm-bindgen `.js` file at build time.
-// https://github.com/rustwasm/wasm-bindgen/pull/3032
-pub(crate) fn register_wasm() -> Result<String, JsValue> {
-    // Get the URL of the current wasm module
-    let url = import_meta::url_js();
-
-    // Connect up the JS Processor to the Rust processor
-    let worklet_processor_js = format!(
-        "
-      import _init, * as _bindgen from \"{url}\";
-      
-      globalThis.bindgen ||= _bindgen
-      globalThis.init ||= _init 
-    "
-    );
-
+/// Equivalent of bindgen `init` for the worklet.
+///
+/// Given the URL to the worklet bindgen js this will initialise WASM in the worklet scope.
+#[wasm_bindgen]
+pub async fn init_worklet(ctx: AudioContext, js_url: &str) -> Result<(), JsValue> {
+    assert_main();
     nop();
 
-    // Create a Blob so that the browser can download the js code from a URL
-    Url::create_object_url_with_blob(&Blob::new_with_str_sequence_and_options(
-        &js_sys::Array::of1(&JsValue::from(worklet_processor_js)),
-        BlobPropertyBag::new().type_("text/javascript"),
-    )?)
+    // Loads up the worklet bootstrapper -- see: xtask-waw/src/worklet.entry.js
+    JsFuture::from(ctx.audio_worklet()?.add_module(js_url)?).await?;
+
+    let mut options = AudioWorkletNodeOptions::new();
+
+    options.processor_options(Some(&js_sys::Array::of1(
+        &wasm_bindgen::module(),
+        // May be possible to introduce shared memory here, but it requires some extra compile flags & headers
+        // https://github.com/rustwasm/wasm-bindgen/tree/main/examples/wasm-audio-worklet
+        // &wasm_bindgen::memory(),
+    )));
+
+    // Initialise the fake `_init` audio worklet - it just initialises WASM
+    // and registers all the proper worklets internally
+    let node = AudioWorkletNode::new_with_options(&ctx, "_init", &options)?;
+
+    wait_for_any_response(node.port()?).await?;
+
+    Ok(())
 }
 
-/// Creates a small JS module to connect the js worklet to the rust worklet.
-// It is created at runtime and served via a Blob URL. @todo - This could probably be generated at build time.
-pub(crate) fn register_processor<Module: AudioModuleDescriptor>() -> Result<String, JsValue> {
-    // Get the URL of the current wasm module
-    let js_source = js_source::<Module>();
-
-    // Create a Blob so that the browser can download the js code from a URL
-    Url::create_object_url_with_blob(&Blob::new_with_str_sequence_and_options(
-        &js_sys::Array::of1(&JsValue::from(js_source)),
-        BlobPropertyBag::new().type_("text/javascript"),
-    )?)
-}
-
-// polyfill.js
-//
-// Firefox does not support ES6 module syntax in the worklets. Worklet code needs to be transpiled. https://bugzilla.mozilla.org/show_bug.cgi?id=1572644
-// We polyfill `Worklet.prototype.addModule` to do this on-the-fly with esbuild if needed.
-//
 // TextEncoder and TextDecoder are not available in [AudioWorkletGlobalScope](https://searchfox.org/mozilla-central/source/dom/webidl/AudioWorkletGlobalScope.webidl),
 // but there is a dirty workaround: install stub implementations of these classes in globalThis.
 // https://github.com/rustwasm/wasm-bindgen/blob/main/examples/wasm-audio-worklet/src/polyfill.js
 //
 // In some cases (error logging, JSON::parse / JSON::stringify) a proper polyfill is necessary rather than just a stub.
-//
-// > Note about js-snppets https://rustwasm.github.io/wasm-bindgen/reference/js-snippets.html
-//   Currently import statements are not supported in the JS file. This is a restriction we may lift in the future once we settle on a good way to support this.
-//   For now, though, js snippets must be standalone modules and can't import from anything else.
-#[wasm_bindgen(module = "/src/polyfill.js")]
+#[wasm_bindgen(module = "/src/polyfill/text-encoder-decoder.js")]
 extern "C" {
     fn nop();
 }
