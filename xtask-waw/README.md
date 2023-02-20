@@ -105,7 +105,7 @@ You can find further information for each type at their documentation level.
 
 ```rust
 use std::process::Command;
-use xtask_waw::{anyhow::Result, clap, default_dist_dir};
+use xtask_waw::{anyhow::Result, clap};
 
 #[derive(clap::Parser)]
 enum Opt {
@@ -118,8 +118,6 @@ fn main() -> Result<()> {
 
     match opt {
         Opt::Dist(dist) => {
-            log::info!("Generating package...");
-
             dist
                 .dist_dir_path("dist")
                 .app_name("my-project")

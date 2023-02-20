@@ -1,6 +1,6 @@
 # waw-rs
 
-`waw-rs` should help you create WebAudio Worklets using Rust, without crying.
+`waw-rs` should help you create Web Audio Worklets using Rust, without crying.
 
 I would recommend to read [WebAssembly/Rust Tutorial: Pitch-perfect Audio Processing](https://www.toptal.com/webassembly/webassembly-rust-tutorial-web-audio)
 
@@ -50,20 +50,19 @@ cargo xtask dist
 They can then be used from JavaScript:
 
 ```typescript
-import init, { init_worklet, Oscillator, Gain } from "./pkg/waw-demo";
+import init, { init_worklet, MyWorklet } from "./pkg/waw-demo";
 import worklet_url from "./pkg/waw-demo.worklet.js?url&worker";
 // Note: waw-demo.worklet.js must be loaded as a URL - bundlers may need different config for this
 
 const main = async () => {
-  const context = new AudioContext();
-
   // Init WASM on the main thread
   await init();
-  // Init WASM on the audio worklet thread
-  await init_worklet(context, worklet_url);
 
   // Create an audio context
   const context = new AudioContext();
+
+  // Init WASM on the audio worklet thread
+  await init_worklet(context, worklet_url);
 
   // Call create on the generated worklet node
   const worklet = await MyWorklet.create(context);
