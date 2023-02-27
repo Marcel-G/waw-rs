@@ -38,8 +38,8 @@ registerProcessor(
     constructor(options) {
       super();
       this.options = options;
-      const [module] = options.processorOptions || [];
-      bindgen.initSync(module);
+      const init = options.processorOptions || [];
+      bindgen.initSync(...init);
       registerAll()
       this.port.postMessage({ method: "send_wasm_program_done" });
     }

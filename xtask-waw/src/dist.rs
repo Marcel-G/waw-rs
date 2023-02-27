@@ -2,7 +2,7 @@ use anyhow::Result;
 use std::{
     fs,
     path::{Path, PathBuf},
-    process,
+    process::{self},
 };
 use xtask_wasm::{clap, Target};
 
@@ -54,6 +54,8 @@ use xtask_wasm::{clap, Target};
 pub struct Dist {
     #[clap(flatten)]
     wasm: xtask_wasm::Dist,
+    #[clap(long)]
+    shared_memory: bool,
 }
 
 impl Dist {
@@ -62,6 +64,15 @@ impl Dist {
     /// The default command is the result of the [`default_build_command`].
     pub fn build_command(mut self, command: process::Command) -> Self {
         self.wasm.build_command = command;
+        self
+    }
+
+    /// Sets shared memory build flags to enabled
+    ///
+    /// A couple of steps are necessary to get this build working which makes it slightly
+    /// nonstandard compared to most other builds.
+    pub fn shared_memory(mut self, enabled: bool) -> Self {
+        self.shared_memory = enabled;
         self
     }
 
@@ -120,8 +131,23 @@ impl Dist {
     ///
     /// Wasm optimizations can be achieved using [`crate::WasmOpt`] if the
     /// feature `wasm-opt` is enabled.
-    pub fn run(self, package_name: &str) -> Result<DistResult> {
+    pub fn run(mut self, package_name: &str) -> Result<DistResult> {
         // Run xtask-wasm build
+
+        if self.shared_memory {
+            let build_command = &mut self.wasm.build_command;
+
+            // First, the Rust standard library needs to be recompiled with atomics
+            // enabled. to do that we use Cargo's unstable `-Zbuild-std` feature.
+            build_command.env(
+                "RUSTFLAGS",
+                "-C target-feature=+atomics,+bulk-memory,+mutable-globals",
+            );
+            // Next we need to compile everything with the `atomics` and `bulk-memory`
+            // features enabled, ensuring that LLVM will generate atomic instructions,
+            // shared memory, passive segments, etc.
+            build_command.args(["-Z", "build-std=std,panic_abort"]);
+        }
 
         let result = self
             .wasm

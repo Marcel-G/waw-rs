@@ -210,12 +210,15 @@ pub async fn init_worklet(ctx: AudioContext, js_url: &str) -> Result<(), JsValue
 
     let mut options = AudioWorkletNodeOptions::new();
 
-    options.processor_options(Some(&js_sys::Array::of1(
-        &wasm_bindgen::module(),
-        // May be possible to introduce shared memory here, but it requires some extra compile flags & headers
-        // https://github.com/rustwasm/wasm-bindgen/tree/main/examples/wasm-audio-worklet
-        // &wasm_bindgen::memory(),
-    )));
+    // Keep in mind Safari recently fixed this: https://bugs.webkit.org/show_bug.cgi?id=220038
+    if cfg!(feature = "shared-memory") {
+        options.processor_options(Some(&js_sys::Array::of2(
+            &wasm_bindgen::module(),
+            &wasm_bindgen::memory(),
+        )));
+    } else {
+        options.processor_options(Some(&js_sys::Array::of1(&wasm_bindgen::module())));
+    }
 
     // Initialise the fake `_init` audio worklet - it just initialises WASM
     // and registers all the proper worklets internally

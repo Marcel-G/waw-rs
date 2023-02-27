@@ -7,10 +7,10 @@ edition = "2021"
 
 [features]
 default = []
-swc = []
+wasm-opt = ["xtask-wasm/wasm-opt"]
 
 [dependencies]
 anyhow = "1.0.69"
 env_logger = "0.9"
 log = "0.4"
-xtask-wasm = { git = "https://github.com/Marcel-G/xtask-wasm", features = ["wasm-opt"]}
+xtask-wasm = { git = "https://github.com/Marcel-G/xtask-wasm" }

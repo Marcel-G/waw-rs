@@ -5,3 +5,7 @@ pub use xtask_wasm::{
 mod dist;
 
 pub use dist::*;
+
+#[cfg(feature = "wasm-opt")]
+#[cfg_attr(docsrs, doc(cfg(feature = "wasm-opt")))]
+pub use ::xtask_wasm::WasmOpt;
