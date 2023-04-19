@@ -49,6 +49,9 @@ impl<E: Into<JsValue>> Emitter<E> {
     }
 }
 
+unsafe impl <E: Into<JsValue>> Send for Emitter<E> {}
+unsafe impl <E: Into<JsValue>> Sync for Emitter<E> {}
+
 /// Audio worklet processor interface.
 pub trait AudioModule {
     /// The type of messages sent from the audio worklet processor (audio thread) to the audio node (main thread).
