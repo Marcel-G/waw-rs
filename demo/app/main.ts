@@ -15,7 +15,7 @@ const main = async () => {
   }
   document.addEventListener('click', handle_interaction, { once: true })
 
-  // Create audio worklet nodes with `install`
+  // Create audio worklet nodes
   const node_a = await Oscillator.create(context, {
     count: 999
   });

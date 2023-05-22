@@ -2,9 +2,9 @@
 
 `waw-rs` should help you create Web Audio Worklets using Rust, without crying.
 
-I would recommend to read [WebAssembly/Rust Tutorial: Pitch-perfect Audio Processing](https://www.toptal.com/webassembly/webassembly-rust-tutorial-web-audio)
+See [WebAssembly/Rust Tutorial: Pitch-perfect Audio Processing](https://www.toptal.com/webassembly/webassembly-rust-tutorial-web-audio)
 
-This is very all very experimental.
+This is all very experimental.
 
 ## Usage
 
