@@ -1,5 +1,5 @@
 use wasm_bindgen::prelude::*;
-use waw::{create_node, register, AutomationRate, ParameterDescriptor, ParameterValues, Processor};
+use waw::{register, AutomationRate, ParameterDescriptor, ParameterValues, Processor};
 
 #[derive(Clone)]
 pub struct FilterData {
@@ -77,7 +77,7 @@ impl FilterNode {
             cutoff,
             resonance: 1.0,
         };
-        let node = create_node::<FilterProcessor>(ctx, "filter", data)?;
+        let node = FilterProcessor::create_node(ctx, data)?;
         Ok(FilterNode { node })
     }
 

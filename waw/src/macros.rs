@@ -16,5 +16,15 @@ macro_rules! register {
         $crate::inventory::submit! {
             $crate::registry::ProcessorRegistration::new($name, register_processor)
         }
+
+        impl $processor {
+            /// Create a new audio worklet node for this processor
+            pub fn create_node(
+                ctx: &$crate::web_sys::AudioContext,
+                data: <$processor as $crate::Processor>::Data,
+            ) -> Result<$crate::web_sys::AudioWorkletNode, $crate::wasm_bindgen::JsValue> {
+                $crate::create_node::<$processor>(ctx, $name, data)
+            }
+        }
     };
 }

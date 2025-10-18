@@ -1,5 +1,5 @@
 use wasm_bindgen::prelude::*;
-use waw::{create_node, register, AutomationRate, ParameterDescriptor, ParameterValues, Processor};
+use waw::{register, AutomationRate, ParameterDescriptor, ParameterValues, Processor};
 
 #[derive(Clone)]
 pub struct OscillatorData {
@@ -87,7 +87,7 @@ impl OscillatorNode {
             frequency,
             waveform: Waveform::Sine,
         };
-        let node = create_node::<OscillatorProcessor>(ctx, "oscillator", data)?;
+        let node = OscillatorProcessor::create_node(ctx, data)?;
         Ok(OscillatorNode { node })
     }
 

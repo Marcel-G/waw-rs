@@ -58,7 +58,7 @@ impl MyNode {
     #[wasm_bindgen(constructor)]
     pub fn new(ctx: &web_sys::AudioContext, frequency: f32) -> Result<MyNode, JsValue> {
         let data = MyData { frequency };
-        let node = create_node::<MyProcessor>(ctx, "my-processor", data)?;
+        let node = MyProcessor::create_node(ctx, data)?;
         Ok(MyNode { node })
     }
 
