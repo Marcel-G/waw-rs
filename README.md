@@ -1,6 +1,6 @@
 # waw-rs
 
-`waw-rs` should help you create Web Audio Worklets using Rust, without crying.
+`waw-rs` helps you create Web Audio Worklets using Rust, without crying.
 
 See [WebAssembly/Rust Tutorial: Pitch-perfect Audio Processing](https://www.toptal.com/webassembly/webassembly-rust-tutorial-web-audio)
 
@@ -8,79 +8,94 @@ This is all very experimental.
 
 ## Usage
 
-To use waw-rs in your project, add it as a dependency in your Cargo.toml:
+Add waw-rs to your Cargo.toml:
 
 ```toml
 waw = { git = "https://github.com/Marcel-G/waw-rs" }
 ```
 
-You will need to setup an xtask to build the project, see [xtask-waw](xtask-waw/README.md).
-
-Then, in your Rust code, simply implement the `AudioModule` trait and call the `waw::main!` macro on your struct:
-
-`src/lib.rs`
+Implement the `Processor` trait and register your audio node:
 
 ```rust
-use waw::{
-  worklet::{ AudioModule, Emitter },
-  buffer::{ AudioBuffer, ParamBuffer }
-};
+use wasm_bindgen::prelude::*;
+use waw::{create_node, register, ParameterValues, Processor};
 
-struct MyWorklet;
-
-impl AudioModule for MyWorklet {
-  fn create(
-    _initial_state: Option<Self::InitialState>,
-    _emitter: Emitter<Self::Event>
-  ) -> Self { MyWorklet }
-  fn process(&mut self, audio: &mut AudioBuffer, params: &ParamBuffer<Self::Param>) {
-    // Implement process
-  }
+#[derive(Clone)]
+pub struct MyData {
+    pub frequency: f32,
 }
 
-waw::main!(MyWorklet);
+pub struct MyProcessor {
+    phase: f32,
+    frequency: f32,
+}
+
+impl Processor for MyProcessor {
+    type Data = MyData;
+
+    fn new(data: Self::Data) -> Self {
+        Self { phase: 0.0, frequency: data.frequency }
+    }
+
+    fn process(
+        &mut self,
+        _inputs: &[&[f32]],
+        outputs: &mut [&mut [f32]],
+        sample_rate: f32,
+        params: &ParameterValues,
+    ) {
+        // ... your audio processing logic
+    }
+}
+
+#[wasm_bindgen]
+pub struct MyNode {
+    node: web_sys::AudioWorkletNode,
+}
+
+#[wasm_bindgen]
+impl MyNode {
+    #[wasm_bindgen(constructor)]
+    pub fn new(ctx: &web_sys::AudioContext, frequency: f32) -> Result<MyNode, JsValue> {
+        let data = MyData { frequency };
+        let node = create_node::<MyProcessor>(ctx, "my-processor", data)?;
+        Ok(MyNode { node })
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn node(&self) -> web_sys::AudioWorkletNode {
+        self.node.clone()
+    }
+}
+
+register!(MyProcessor, "my-processor");
 ```
 
-Run the build using the xtask command
+Build with wasm-pack:
 
 ```bash
-cargo xtask dist
+wasm-pack build --target web
 ```
 
-They can then be used from JavaScript:
+Use in JavaScript:
 
 ```typescript
-import init, { init_worklet, MyWorklet } from "./pkg/waw-demo";
-import worklet_url from "./pkg/waw-demo.worklet.js?url&worker";
-// Note: waw-demo.worklet.js must be loaded as a URL - bundlers may need different config for this
+import init, { MyNode, registerContext } from './pkg/your_project';
 
 const main = async () => {
-  // Init WASM on the main thread
   await init();
+  const context = await registerContext();
 
-  // Create an audio context
-  const context = new AudioContext();
+  const node = new MyNode(context, 440.0);
+  node.node.connect(context.destination);
 
-  // Init WASM on the audio worklet thread
-  await init_worklet(context, worklet_url);
-
-  // Call create on the generated worklet node
-  const worklet = await MyWorklet.create(context);
-
-  // Connect the audio node to WebAudio graph
-  worklet.node().connect(context.destination);
-
-  // Wait for some interaction on the page before starting the audio
-  const handle_interaction = () => {
-    void context?.resume();
-  };
-  document.addEventListener("click", handle_interaction, { once: true });
+  document.addEventListener('click', () => context.resume(), { once: true });
 };
 
 main();
 ```
 
-See the [demo project](demo/app) for a full example.
+See the [demo](demo) for a complete example.
 
 ## Links
 
