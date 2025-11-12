@@ -6,7 +6,7 @@ pub trait Processor: 'static + Send {
     /// Associated data type for the processor.
     ///
     /// This type represents the configuration or state data required to construct and operate the processor.
-    type Data: 'static + Send + Clone;
+    type Data: 'static + Send;
 
     /// Creates a new instance of the processor with the given data.
     fn new(data: Self::Data) -> Self;
