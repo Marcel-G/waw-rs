@@ -18,7 +18,7 @@ Implement the `Processor` trait and register your audio node:
 
 ```rust
 use wasm_bindgen::prelude::*;
-use waw::{create_node, register, ParameterValues, Processor};
+use waw::{register, ParameterValuesRef, Processor};
 
 #[derive(Clone)]
 pub struct MyData {
@@ -42,7 +42,7 @@ impl Processor for MyProcessor {
         _inputs: &[&[f32]],
         outputs: &mut [&mut [f32]],
         sample_rate: f32,
-        params: &ParameterValues,
+        params: &ParameterValuesRef,
     ) {
         // ... your audio processing logic
     }
@@ -58,7 +58,13 @@ impl MyNode {
     #[wasm_bindgen(constructor)]
     pub fn new(ctx: &web_sys::AudioContext, frequency: f32) -> Result<MyNode, JsValue> {
         let data = MyData { frequency };
-        let node = MyProcessor::create_node(ctx, data)?;
+        
+        // Configure input/output ports via AudioWorkletNodeOptions
+        let options = web_sys::AudioWorkletNodeOptions::new();
+        options.set_number_of_inputs(0);  // Generator: no inputs
+        options.set_number_of_outputs(1); // Mono output
+        
+        let node = MyProcessor::create_node(ctx, data, Some(&options))?;
         Ok(MyNode { node })
     }
 
@@ -80,11 +86,14 @@ wasm-pack build --target web
 Use in JavaScript:
 
 ```typescript
-import init, { MyNode, registerContext } from './pkg/your_project';
+import init, { MyNode, register_all } from './pkg/your_project';
 
 const main = async () => {
   await init();
-  const context = await registerContext();
+  const context = new AudioContext();
+  
+  // Register all audio worklet processors
+  await register_all(context);
 
   const node = new MyNode(context, 440.0);
   node.node.connect(context.destination);

@@ -66,9 +66,10 @@ pub fn create_node<P: Processor>(
     ctx: &AudioContext,
     name: &str,
     data: P::Data,
+    options: Option<&web_sys::AudioWorkletNodeOptions>,
 ) -> Result<AudioWorkletNode, JsValue> {
     use web_thread::web::audio_worklet::BaseAudioContextExt;
 
-    ctx.audio_worklet_node::<ProcessorWrapper<P>>(name, data, None)
+    ctx.audio_worklet_node::<ProcessorWrapper<P>>(name, data, options)
         .map_err(|e| JsValue::from_str(&format!("Failed to create node: {:?}", e)))
 }

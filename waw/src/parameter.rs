@@ -19,14 +19,14 @@ pub struct ParameterDescriptor {
     pub automation_rate: AutomationRate,
 }
 
-impl Into<JsValue> for ParameterDescriptor {
-    fn into(self) -> JsValue {
+impl From<ParameterDescriptor> for JsValue {
+    fn from(val: ParameterDescriptor) -> Self {
         let obj = Object::new();
-        Reflect::set(&obj, &"name".into(), &self.name.into()).unwrap();
-        Reflect::set(&obj, &"defaultValue".into(), &self.default_value.into()).unwrap();
-        Reflect::set(&obj, &"minValue".into(), &self.min_value.into()).unwrap();
-        Reflect::set(&obj, &"maxValue".into(), &self.max_value.into()).unwrap();
-        Reflect::set(&obj, &"automationRate".into(), &self.automation_rate.into()).unwrap();
+        Reflect::set(&obj, &"name".into(), &val.name.into()).unwrap();
+        Reflect::set(&obj, &"defaultValue".into(), &val.default_value.into()).unwrap();
+        Reflect::set(&obj, &"minValue".into(), &val.min_value.into()).unwrap();
+        Reflect::set(&obj, &"maxValue".into(), &val.max_value.into()).unwrap();
+        Reflect::set(&obj, &"automationRate".into(), &val.automation_rate.into()).unwrap();
         obj.into()
     }
 }
@@ -44,9 +44,9 @@ pub enum AutomationRate {
     KRate,
 }
 
-impl Into<JsValue> for AutomationRate {
-    fn into(self) -> JsValue {
-        match self {
+impl From<AutomationRate> for JsValue {
+    fn from(val: AutomationRate) -> Self {
+        match val {
             AutomationRate::ARate => "a-rate".into(),
             AutomationRate::KRate => "k-rate".into(),
         }

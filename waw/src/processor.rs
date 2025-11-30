@@ -1,5 +1,4 @@
-use crate::parameter::ParameterDescriptor;
-use std::collections::HashMap;
+use crate::{buffer::ParameterValuesRef, parameter::ParameterDescriptor};
 
 /// The `Processor` trait defines the interface for audio processing units.
 pub trait Processor: 'static + Send {
@@ -12,33 +11,22 @@ pub trait Processor: 'static + Send {
     fn new(data: Self::Data) -> Self;
 
     /// Processes audio buffers.
+    ///
+    /// # Parameters
+    /// - `inputs`: Input audio channels (may be empty for generators)
+    /// - `outputs`: Output audio channels to fill
+    /// - `sample_rate`: Current audio context sample rate
+    /// - `params`: Parameter buffers - use `params.get("name")` to access 128-sample buffers
     fn process(
         &mut self,
         inputs: &[&[f32]],
         outputs: &mut [&mut [f32]],
         sample_rate: f32,
-        params: &ParameterValues,
+        params: &ParameterValuesRef,
     );
 
     /// Optional: return parameter descriptors
     fn parameter_descriptors() -> Vec<ParameterDescriptor> {
         Vec::new()
-    }
-}
-
-/// Holds the current values of parameters for audio processing.
-pub struct ParameterValues {
-    pub(crate) params: HashMap<String, f32>,
-}
-
-impl ParameterValues {
-    /// Returns the value of the parameter with the given name, or the provided default if not found.
-    pub fn get(&self, name: &str, default: f32) -> f32 {
-        self.params.get(name).copied().unwrap_or(default)
-    }
-
-    /// Returns an iterator over the names of all parameters.
-    pub fn names(&self) -> impl Iterator<Item = &String> {
-        self.params.keys()
     }
 }

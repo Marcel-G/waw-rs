@@ -1,5 +1,5 @@
 use wasm_bindgen::prelude::*;
-use waw::{register, AutomationRate, ParameterDescriptor, ParameterValues, Processor};
+use waw::{register, AutomationRate, ParameterDescriptor, ParameterValuesRef, Processor};
 
 #[derive(Clone)]
 pub struct FilterData {
@@ -27,19 +27,39 @@ impl Processor for FilterProcessor {
         inputs: &[&[f32]],
         outputs: &mut [&mut [f32]],
         sample_rate: f32,
-        params: &ParameterValues,
+        params: &ParameterValuesRef,
     ) {
-        let cutoff = params.get("cutoff", self.cutoff);
+        if let (Some(input_channel), Some(output_channel)) = (inputs.first(), outputs.first_mut()) {
+            // Get cutoff parameter buffer (128 samples)
+            // For k-rate: all values are the same
+            // For a-rate: values may differ for per-sample automation
+            let cutoff_buffer = params.get("cutoff");
 
-        // Simple one-pole low-pass filter
-        let omega = 2.0 * std::f32::consts::PI * cutoff / sample_rate;
-        let a = omega / (1.0 + omega).min(1.0);
+            if let Some(cutoff) = cutoff_buffer {
+                // Simple one-pole low-pass filter with per-sample automation
+                for (i, (input_sample, output_sample)) in input_channel
+                    .iter()
+                    .zip(output_channel.iter_mut())
+                    .enumerate()
+                {
+                    let cutoff_value = cutoff[i];
+                    let omega = 2.0 * std::f32::consts::PI * cutoff_value / sample_rate;
+                    let a = omega / (1.0 + omega).min(1.0);
 
-        if let (Some(input_channel), Some(output_channel)) = (inputs.get(0), outputs.get_mut(0)) {
-            for (input_sample, output_sample) in input_channel.iter().zip(output_channel.iter_mut())
-            {
-                self.z1 = input_sample * a + self.z1 * (1.0 - a);
-                *output_sample = self.z1;
+                    self.z1 = input_sample * a + self.z1 * (1.0 - a);
+                    *output_sample = self.z1;
+                }
+            } else {
+                // Fallback: use initial cutoff value
+                let omega = 2.0 * std::f32::consts::PI * self.cutoff / sample_rate;
+                let a = omega / (1.0 + omega).min(1.0);
+
+                for (input_sample, output_sample) in
+                    input_channel.iter().zip(output_channel.iter_mut())
+                {
+                    self.z1 = input_sample * a + self.z1 * (1.0 - a);
+                    *output_sample = self.z1;
+                }
             }
         }
     }
@@ -77,7 +97,13 @@ impl FilterNode {
             cutoff,
             resonance: 1.0,
         };
-        let node = FilterProcessor::create_node(ctx, data)?;
+
+        // Create options for an effect (1 input, 1 output)
+        let options = web_sys::AudioWorkletNodeOptions::new();
+        options.set_number_of_inputs(1);
+        options.set_number_of_outputs(1);
+
+        let node = FilterProcessor::create_node(ctx, data, Some(&options))?;
         Ok(FilterNode { node })
     }
 

@@ -21,6 +21,7 @@ pub mod registry;
 /// Wrapper for integrating processors with the Web Audio API.
 pub mod wrapper;
 
+pub use buffer::ParameterValuesRef;
 pub use parameter::*;
 pub use processor::*;
 pub use registry::{create_node, register_all};
