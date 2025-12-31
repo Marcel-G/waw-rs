@@ -6,6 +6,21 @@ See [WebAssembly/Rust Tutorial: Pitch-perfect Audio Processing](https://www.topt
 
 This is all very experimental.
 
+## Requirements
+
+This crate requires WebAssembly target features `+atomics` and `+bulk-memory` to function properly. These features are necessary for the underlying `web-thread` dependency that enables Audio Worklet support with shared memory and threading.
+
+### Minimal Configuration
+
+If you want a minimal setup (though the full configuration above is recommended), you can use:
+
+```toml
+[target.wasm32-unknown-unknown]
+rustflags = [
+  "-C", "target-feature=+atomics,+bulk-memory",
+]
+```
+
 ## Usage
 
 Add waw-rs to your Cargo.toml:

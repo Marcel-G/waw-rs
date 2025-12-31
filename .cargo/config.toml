@@ -1,5 +1,24 @@
+# Configuration for waw-rs WebAssembly builds
+#
+# This crate requires atomics and bulk-memory features for proper
+# Web Audio Worklet functionality with web-thread support.
+#
+# Additional linker flags are required for shared memory and threading support.
+
+[unstable]
+build-std = ['std', 'panic_abort']
+
 [build]
 target = ["wasm32-unknown-unknown"]
-
-[target.wasm32-unknown-unknown]
-rustflags = []
+rustflags = [ 
+    "-Ctarget-feature=+atomics,+bulk-memory",
+    # Shared memory configuration for web-thread support
+    "-Clink-arg=--max-memory=4294967296",
+    "-Clink-arg=--shared-memory",
+    "-Clink-arg=--import-memory",
+    "-Clink-arg=--export=__wasm_init_tls",
+    "-Clink-arg=--export=__tls_size",
+    "-Clink-arg=--export=__tls_align",
+    "-Clink-arg=--export=__tls_base",
+    "--cfg=web_sys_unstable_apis",
+]

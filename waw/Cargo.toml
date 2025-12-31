@@ -3,6 +3,10 @@ name = "waw"
 version = "0.2.0"
 edition = "2021"
 
+# IMPORTANT: This crate requires +atomics and +bulk-memory target features
+# along with additional linker flags for shared memory support.
+# See README.md for complete .cargo/config.toml configuration.
+
 [package.metadata.docs.rs]
 targets = ["wasm32-unknown-unknown"]
 

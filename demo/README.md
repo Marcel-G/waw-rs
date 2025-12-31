@@ -2,6 +2,10 @@
 
 Welcome to the waw-rs demo project! This project demonstrate how to create a super simple WebAudio application in the browser using vite and waw-rs.
 
+## Requirements
+
+This project requires WebAssembly target features `+atomics` and `+bulk-memory`. These are already configured in the workspace's `.cargo/config.toml` file at the repository root.
+
 ## Running the project
 
 To install wasm-pack:
