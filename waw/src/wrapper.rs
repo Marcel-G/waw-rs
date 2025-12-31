@@ -3,9 +3,21 @@ use crate::{
     processor::Processor,
 };
 use js_sys::{Array, Iterator, Object};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 use wasm_bindgen::JsCast;
 use web_sys::{AudioWorkletGlobalScope, AudioWorkletNodeOptions, AudioWorkletProcessor};
 use web_thread::web::audio_worklet::ExtendAudioWorkletProcessor;
+
+/// Internal data structure that wraps user data with lifecycle management.
+pub struct ProcessorWrapperData<D> {
+    /// The user's processor data
+    pub user_data: D,
+    /// Shared flag indicating if the processor should continue processing
+    pub is_active: Arc<AtomicBool>,
+}
 
 /// A wrapper struct for a type implementing the `Processor` trait, used to interface with the Web Audio API.
 pub struct ProcessorWrapper<P: Processor> {
@@ -13,17 +25,20 @@ pub struct ProcessorWrapper<P: Processor> {
     input_buffer: InputBuffer,
     output_buffer: OutputBuffer,
     parameter_buffer: ParameterBuffer,
+    is_active: Arc<AtomicBool>,
 }
 
 impl<P: Processor> ExtendAudioWorkletProcessor for ProcessorWrapper<P> {
-    type Data = P::Data;
+    type Data = ProcessorWrapperData<P::Data>;
 
     fn new(
         _this: AudioWorkletProcessor,
         data: Option<Self::Data>,
         options: AudioWorkletNodeOptions,
     ) -> Self {
-        let processor = P::new(data.expect("Data required"));
+        let wrapper_data = data.expect("Data required");
+        let processor = P::new(wrapper_data.user_data);
+        let is_active = wrapper_data.is_active;
 
         // Initialize with minimal buffers - they will dynamically resize on first process() call
         // based on what JavaScript provides in the inputs/outputs arrays.
@@ -51,10 +66,15 @@ impl<P: Processor> ExtendAudioWorkletProcessor for ProcessorWrapper<P> {
             input_buffer,
             output_buffer,
             parameter_buffer,
+            is_active,
         }
     }
 
     fn process(&mut self, inputs: Array, outputs: Array, parameters: Object) -> bool {
+        if !self.is_active.load(Ordering::Acquire) {
+            return false;
+        }
+
         let global: AudioWorkletGlobalScope = js_sys::global().unchecked_into();
         let sample_rate = global.sample_rate();
 

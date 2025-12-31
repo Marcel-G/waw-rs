@@ -86,7 +86,7 @@ impl Processor for FilterProcessor {
 
 #[wasm_bindgen]
 pub struct FilterNode {
-    node: web_sys::AudioWorkletNode,
+    wrapper: waw::AudioWorkletNodeWrapper,
 }
 
 #[wasm_bindgen]
@@ -103,13 +103,13 @@ impl FilterNode {
         options.set_number_of_inputs(1);
         options.set_number_of_outputs(1);
 
-        let node = FilterProcessor::create_node(ctx, data, Some(&options))?;
-        Ok(FilterNode { node })
+        let wrapper = FilterProcessor::create_node(ctx, data, Some(&options))?;
+        Ok(FilterNode { wrapper })
     }
 
     #[wasm_bindgen(getter)]
     pub fn node(&self) -> web_sys::AudioWorkletNode {
-        self.node.clone()
+        self.wrapper.node().clone()
     }
 }
 

@@ -3,10 +3,11 @@ use std::sync::{
     Arc,
 };
 
+use crate::node::AudioWorkletNodeWrapper;
 use crate::processor::Processor;
-use crate::wrapper::ProcessorWrapper;
+use crate::wrapper::{ProcessorWrapper, ProcessorWrapperData};
 use wasm_bindgen::prelude::*;
-use web_sys::{AudioContext, AudioWorkletNode};
+use web_sys::AudioContext;
 
 /// Registration entry for inventory
 pub struct ProcessorRegistration {
@@ -67,9 +68,23 @@ pub fn create_node<P: Processor>(
     name: &str,
     data: P::Data,
     options: Option<&web_sys::AudioWorkletNodeOptions>,
-) -> Result<AudioWorkletNode, JsValue> {
+) -> Result<AudioWorkletNodeWrapper, JsValue> {
     use web_thread::web::audio_worklet::BaseAudioContextExt;
 
-    ctx.audio_worklet_node::<ProcessorWrapper<P>>(name, data, options)
-        .map_err(|e| JsValue::from_str(&format!("Failed to create node: {:?}", e)))
+    // Create the shared active state flag
+    let is_active = Arc::new(AtomicBool::new(true));
+
+    // Wrap the user data with the active state
+    let wrapper_data = ProcessorWrapperData {
+        user_data: data,
+        is_active: is_active.clone(),
+    };
+
+    // Create the node
+    let node = ctx
+        .audio_worklet_node::<ProcessorWrapper<P>>(name, wrapper_data, options)
+        .map_err(|e| JsValue::from_str(&format!("Failed to create node: {:?}", e)))?;
+
+    // Return the wrapped node with the shared active state
+    Ok(AudioWorkletNodeWrapper::new(node, is_active))
 }

@@ -9,6 +9,9 @@ pub mod buffer;
 /// Macros for processor registration and code generation.
 pub mod macros;
 
+/// Node wrapper for proper cleanup and lifecycle management.
+pub mod node;
+
 /// Parameter types and JS conversion utilities for audio processing.
 pub mod parameter;
 
@@ -22,10 +25,11 @@ pub mod registry;
 pub mod wrapper;
 
 pub use buffer::ParameterValuesRef;
+pub use node::AudioWorkletNodeWrapper;
 pub use parameter::*;
 pub use processor::*;
 pub use registry::{create_node, register_all};
-pub use wrapper::ProcessorWrapper;
+pub use wrapper::{ProcessorWrapper, ProcessorWrapperData};
 
 // Re-export wasm-bindgen for macros
 pub use inventory;

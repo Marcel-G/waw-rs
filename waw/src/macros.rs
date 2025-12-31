@@ -46,7 +46,7 @@ macro_rules! register {
                 ctx: &$crate::web_sys::AudioContext,
                 data: <$processor as $crate::Processor>::Data,
                 options: Option<&$crate::web_sys::AudioWorkletNodeOptions>,
-            ) -> Result<$crate::web_sys::AudioWorkletNode, $crate::wasm_bindgen::JsValue> {
+            ) -> Result<$crate::AudioWorkletNodeWrapper, $crate::wasm_bindgen::JsValue> {
                 $crate::create_node::<$processor>(ctx, $name, data, options)
             }
         }
