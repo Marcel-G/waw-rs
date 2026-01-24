@@ -27,8 +27,25 @@ impl ProcessorRegistration {
 // Collect all registrations using inventory
 inventory::collect!(ProcessorRegistration);
 
-/// Register all processors in the given audio context
-pub async fn register_all(ctx: &AudioContext) -> Result<(), JsValue> {
+/// Register all processors in the given audio context.
+///
+/// # Arguments
+///
+/// * `ctx` - The audio context to register processors in
+/// * `shim_url` - Optional custom URL for the wasm-bindgen JS shim.
+///   Use this when bundlers like Vite change the location of the JS shim file.
+///   Pass `None` to use the default `import.meta.url` detection.
+///
+/// # Example
+///
+/// ```ignore
+/// // Default usage (works in development)
+/// waw::register_all(&ctx, None).await?;
+///
+/// // With custom shim URL (for production builds with bundlers)
+/// waw::register_all(&ctx, Some("/assets/my_module.js")).await?;
+/// ```
+pub async fn register_all(ctx: &AudioContext, shim_url: Option<&str>) -> Result<(), JsValue> {
     use web_thread::web::audio_worklet::BaseAudioContextExt;
 
     let completed = Arc::new(AtomicBool::new(false));
@@ -40,7 +57,7 @@ pub async fn register_all(ctx: &AudioContext) -> Result<(), JsValue> {
         .collect();
 
     ctx.clone()
-        .register_thread(None, move || {
+        .register_thread(None, shim_url, move || {
             for reg in &registrations {
                 if let Err(e) = (reg.register_fn)() {
                     web_sys::console::error_1(
