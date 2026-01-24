@@ -121,6 +121,43 @@ main();
 
 See the [demo](demo) for a complete example.
 
+## Bundler Compatibility (Vite, etc.)
+
+When using bundlers like Vite that chunk and minify your code, the default `import.meta.url` detection may not work correctly for the wasm-bindgen JS shim location. The `register_all` function accepts an optional `shim_url` parameter to handle this:
+
+### Rust side:
+
+```rust
+// Default usage (works in development)
+waw::register_all(&ctx, None).await?;
+
+// With custom shim URL (for production builds with bundlers)
+waw::register_all(&ctx, Some("/assets/my_module.js")).await?;
+```
+
+### JavaScript side (if exposing via wasm-bindgen):
+
+```typescript
+import init, { registerContext, MyNode } from './pkg/your_project';
+
+const main = async () => {
+  await init();
+  
+  // Default usage (works in development)
+  const context = await registerContext();
+  
+  // OR with custom shim URL (for production builds with Vite)
+  // This should point to the wasm-bindgen generated JS file
+  const context = await registerContext('/assets/your_project.js');
+  
+  // ... rest of your code
+};
+
+main();
+```
+
+**Note:** You only need to pass a custom shim URL if you're experiencing issues with audio worklet registration in production builds. In development, passing `None`/`undefined` uses the default `import.meta.url` detection which typically works fine.
+
 ## Links
 
 - [wasm-bindgen WASM audio worklet](https://rustwasm.github.io/wasm-bindgen/examples/wasm-audio-worklet.html#wasm-audio-worklet)
