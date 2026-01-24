@@ -75,6 +75,7 @@ pub async fn register_all(ctx: &AudioContext, shim_url: Option<&str>) -> Result<
     while !completed.load(Ordering::Acquire) {
         yield_to_event_loop().await;
     }
+
     // One more yield to ensure everything is synchronized
     yield_to_event_loop().await;
 
@@ -82,25 +83,83 @@ pub async fn register_all(ctx: &AudioContext, shim_url: Option<&str>) -> Result<
 }
 
 /// Yields to the JavaScript event loop.
+///
+/// Uses `MessageChannel.postMessage()` which properly yields to the event loop
+/// without the minimum delay of `setTimeout`. Falls back to immediate resolution
+/// if `MessageChannel` is not available (e.g., in worklet contexts).
+///
+/// Based on the approach from wasm-worker/web-thread.
 async fn yield_to_event_loop() {
-    use wasm_bindgen_futures::JsFuture;
+    use std::cell::RefCell;
+    use std::future::Future;
+    use std::pin::Pin;
+    use std::rc::Rc;
+    use std::task::{Context, Poll, Waker};
+    use wasm_bindgen::closure::Closure;
+    use wasm_bindgen::JsCast;
+    use web_sys::MessageChannel;
 
-    let promise = js_sys::Promise::new(&mut |resolve, _| {
-        // Use queueMicrotask for minimal delay
-        let global = js_sys::global();
-        let queue_microtask = js_sys::Reflect::get(&global, &"queueMicrotask".into())
-            .ok()
-            .and_then(|f| f.dyn_into::<js_sys::Function>().ok());
+    /// Shared state for the yield future.
+    struct YieldState {
+        completed: bool,
+        waker: Option<Waker>,
+    }
 
-        if let Some(queue) = queue_microtask {
-            let _ = queue.call1(&JsValue::UNDEFINED, &resolve);
-        } else {
-            // Fallback: resolve immediately
-            let _ = resolve.call0(&JsValue::UNDEFINED);
+    /// Future that yields to the event loop via MessageChannel.
+    struct YieldFuture {
+        state: Rc<RefCell<YieldState>>,
+        _callback: Option<Closure<dyn FnMut()>>,
+        _channel: Option<MessageChannel>,
+    }
+
+    impl Future for YieldFuture {
+        type Output = ();
+
+        fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+            let mut state = self.state.borrow_mut();
+            if state.completed {
+                Poll::Ready(())
+            } else {
+                state.waker = Some(cx.waker().clone());
+                Poll::Pending
+            }
         }
-    });
+    }
 
-    let _ = JsFuture::from(promise).await;
+    // Try to create a MessageChannel for yielding
+    let channel = MessageChannel::new().ok();
+
+    if let Some(channel) = channel {
+        let state = Rc::new(RefCell::new(YieldState {
+            completed: false,
+            waker: None,
+        }));
+
+        let callback = {
+            let state = Rc::clone(&state);
+            Closure::once(move || {
+                let mut s = state.borrow_mut();
+                s.completed = true;
+                if let Some(waker) = s.waker.take() {
+                    waker.wake();
+                }
+            })
+        };
+
+        channel
+            .port1()
+            .set_onmessage(Some(callback.as_ref().unchecked_ref()));
+        let _ = channel.port2().post_message(&JsValue::UNDEFINED);
+
+        let future = YieldFuture {
+            state,
+            _callback: Some(callback),
+            _channel: Some(channel),
+        };
+
+        future.await;
+    }
+    // If MessageChannel is not available (e.g., in worklet), resolve immediately
 }
 
 /// Create an audio worklet node
