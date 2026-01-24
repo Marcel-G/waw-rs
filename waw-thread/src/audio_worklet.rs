@@ -182,6 +182,8 @@ enum RegisterState {
         promise: JsFuture,
         stack_size: Option<usize>,
         task: Box<dyn FnOnce() + Send>,
+        // Keep the script URL alive until the module is loaded
+        _script_url: ScriptUrl,
     },
     WaitingForLock {
         context: BaseAudioContext,
@@ -210,8 +212,11 @@ impl Future for RegisterThreadFuture {
                     mut promise,
                     stack_size,
                     task,
+                    _script_url,
                 } => match Pin::new(&mut promise).poll(cx) {
                     Poll::Ready(Ok(_)) => {
+                        // Module loaded, script_url can now be dropped
+                        drop(_script_url);
                         self.state = Some(RegisterState::WaitingForLock {
                             context,
                             stack_size,
@@ -228,6 +233,7 @@ impl Future for RegisterThreadFuture {
                             promise,
                             stack_size,
                             task,
+                            _script_url,
                         });
                         return Poll::Pending;
                     }
@@ -395,6 +401,7 @@ where
                     promise: JsFuture::from(promise),
                     stack_size,
                     task: Box::new(task),
+                    _script_url: script_url,
                 }),
             }
         }
