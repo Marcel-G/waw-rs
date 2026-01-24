@@ -1,0 +1,10 @@
+{
+	"goog:chromeOptions": {
+		"args": ["--autoplay-policy=no-user-gesture-required"]
+	},
+	"moz:firefoxOptions": {
+		"prefs": {
+			"media.autoplay.default": 0
+		}
+	}
+}

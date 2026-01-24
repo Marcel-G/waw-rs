@@ -1,0 +1,12 @@
+[package]
+edition = "2021"
+name = "minimal-versions"
+publish = false
+version = "0.0.0"
+
+[features]
+audio-worklet = ["web-thread/audio-worklet"]
+message = ["web-thread/message"]
+
+[dependencies]
+web-thread = { path = ".." }
