@@ -2,9 +2,7 @@ import init, { registerContext, FilterNode, OscillatorNode } from './pkg/waw_dem
 
 const main = async () => {
   await init()
-  // Pass undefined for default import.meta.url detection,
-  // or pass a custom URL string for bundler compatibility (e.g., "/assets/waw_demo.js")
-  const context = await registerContext(undefined);
+  const context = await registerContext();
 
   const osc_1 = new OscillatorNode(context, 110.0)
   const filter_1 = new FilterNode(context, 440.0)

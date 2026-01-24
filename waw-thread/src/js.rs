@@ -8,7 +8,7 @@ extern "C" {
     pub type Meta;
 
     /// Returns [`import.meta`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/import.meta).
-    #[wasm_bindgen(thread_local, js_namespace = import, js_name = meta)]
+    #[wasm_bindgen(thread_local_v2, js_namespace = import, js_name = meta)]
     pub static META: Meta;
 
     /// See [`import.meta.url`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/import.meta#url).

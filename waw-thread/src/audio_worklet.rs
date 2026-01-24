@@ -40,11 +40,11 @@ thread_local! {
 #[wasm_bindgen]
 extern "C" {
     /// Name of our custom property on [`AudioWorkletNodeOptions`].
-    #[wasm_bindgen(thread_local, static_string)]
+    #[wasm_bindgen(thread_local_v2, static_string)]
     static DATA_PROPERTY_NAME: JsString = "__waw_thread_data";
 
     /// Name of the processorOptions property.
-    #[wasm_bindgen(thread_local, static_string)]
+    #[wasm_bindgen(thread_local_v2, static_string)]
     static PROCESSOR_OPTIONS_PROPERTY_NAME: JsString = "processorOptions";
 
     /// Extension for processor options to store data pointer.
@@ -254,17 +254,18 @@ impl Future for RegisterThreadFuture {
                     }
 
                     // Create the initialization node
-                    let task_ptr: NonNull<Box<dyn FnOnce() + Send>> =
-                        NonNull::from(Box::leak(Box::new(task)));
+                    let task_ptr = Box::into_raw(Box::new(task));
+                    #[allow(clippy::as_conversions)]
+                    let task_ptr_u32 = task_ptr as u32;
 
                     let options = AudioWorkletNodeOptions::new();
-                    let processor_options = Array::of4(
+                    let processor_options = Array::of5(
                         &wasm_bindgen::module(),
                         &wasm_bindgen::memory(),
                         &stack_size.into(),
                         &WORKLET_LOCK_INDEX.with(JsValue::clone),
+                        &task_ptr_u32.into(),
                     );
-                    processor_options.push(&task_ptr.into());
                     options.set_processor_options(Some(&processor_options));
 
                     match AudioWorkletNode::new_with_options(
@@ -292,9 +293,8 @@ impl Future for RegisterThreadFuture {
                             return Poll::Ready(Ok(AudioWorkletHandle { _context: context }));
                         }
                         Err(e) => {
-                            // SAFETY: We just created this pointer
-                            let task = unsafe { Box::from_raw(task_ptr.as_ptr()) };
-                            drop(task);
+                            // SAFETY: We just created this pointer and it wasn't consumed
+                            drop(unsafe { Box::from_raw(task_ptr) });
                             WORKLET_LOCK.store(0, Ordering::Release);
                             return Poll::Ready(Err(error_from_exception(e)));
                         }
@@ -595,11 +595,13 @@ impl __WawThreadProcessor {
 ///
 /// # Safety
 ///
-/// `task` must be a valid pointer to a `Box<dyn FnOnce() + Send>`.
-#[wasm_bindgen(skip_typescript)]
+/// `task_ptr` must be a valid pointer to a `Box<dyn FnOnce() + Send>`.
+#[wasm_bindgen]
 #[allow(unreachable_pub)]
-pub unsafe fn __waw_thread_worklet_entry(task: NonNull<Box<dyn FnOnce() + Send>>) {
-    // SAFETY: Caller guarantees this is a valid pointer
-    let task: Box<dyn FnOnce() + Send> = *unsafe { Box::from_raw(task.as_ptr()) };
-    task();
+pub fn __waw_thread_worklet_entry(task_ptr: u32) {
+    // SAFETY: Caller guarantees this is a valid pointer created by Box::into_raw
+    #[allow(clippy::as_conversions)]
+    let task: Box<Box<dyn FnOnce() + Send>> =
+        unsafe { Box::from_raw(task_ptr as *mut Box<dyn FnOnce() + Send>) };
+    (*task)();
 }
