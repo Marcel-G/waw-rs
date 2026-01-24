@@ -1,8 +1,0 @@
-allow-renamed-params-for = ["..", "core::fmt::Debug", "core::fmt::Display"]
-allow-unwrap-in-tests = true
-avoid-breaking-exported-api = false
-disallowed-methods = [
-	{ path = "std::sync::OnceLock::new", reason = "when initialized from multiple threads at the same time can block" },
-	{ path = "std::sync::LazyLock::new", reason = "when initialized from multiple threads at the same time can block" },
-]
-semicolon-outside-block-ignore-multiline = true

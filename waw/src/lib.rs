@@ -31,9 +31,9 @@ pub use processor::*;
 pub use registry::{create_node, register_all};
 pub use wrapper::{ProcessorWrapper, ProcessorWrapperData};
 
-// Re-export wasm-bindgen for macros
+// Re-export dependencies for macros and processor implementations
 pub use inventory;
 pub use js_sys;
 pub use wasm_bindgen;
+pub use waw_thread;
 pub use web_sys;
-pub use web_thread;

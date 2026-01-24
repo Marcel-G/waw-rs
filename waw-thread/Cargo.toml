@@ -1,0 +1,35 @@
+[package]
+name = "waw-thread"
+version = "0.1.0"
+edition = "2021"
+description = "Minimal audio worklet thread support for waw-rs"
+license = "MIT OR Apache-2.0"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+js-sys = "0.3"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+pin-project = "1"
+atomic-waker = "1"
+
+[dependencies.web-sys]
+version = "0.3"
+features = [
+  "AudioContext",
+  "AudioContextState",
+  "AudioWorklet",
+  "AudioWorkletGlobalScope",
+  "AudioWorkletNode",
+  "AudioWorkletNodeOptions",
+  "AudioWorkletProcessor",
+  "BaseAudioContext",
+  "Blob",
+  "BlobPropertyBag",
+  "DomException",
+  "MessageChannel",
+  "MessagePort",
+  "Url",
+]

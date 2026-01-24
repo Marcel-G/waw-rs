@@ -27,7 +27,7 @@ macro_rules! register {
         // Create the registration function
         fn register_processor() -> Result<(), $crate::wasm_bindgen::JsValue> {
             use $crate::wasm_bindgen::JsCast;
-            use $crate::web_thread::web::audio_worklet::AudioWorkletGlobalScopeExt;
+            use $crate::waw_thread::AudioWorkletGlobalScopeExt;
 
             let global: $crate::web_sys::AudioWorkletGlobalScope =
                 $crate::js_sys::global().unchecked_into();

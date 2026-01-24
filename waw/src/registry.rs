@@ -46,7 +46,7 @@ inventory::collect!(ProcessorRegistration);
 /// waw::register_all(&ctx, Some("/assets/my_module.js")).await?;
 /// ```
 pub async fn register_all(ctx: &AudioContext, shim_url: Option<&str>) -> Result<(), JsValue> {
-    use web_thread::web::audio_worklet::BaseAudioContextExt;
+    use waw_thread::BaseAudioContextExt;
 
     let completed = Arc::new(AtomicBool::new(false));
     let completed_clone = completed.clone();
@@ -71,12 +71,36 @@ pub async fn register_all(ctx: &AudioContext, shim_url: Option<&str>) -> Result<
         .await
         .map_err(|e| JsValue::from_str(&format!("Failed to register thread: {:?}", e)))?;
 
+    // Wait for the registration task to complete
     while !completed.load(Ordering::Acquire) {
-        web_thread::web::yield_now_async(web_thread::web::YieldTime::UserBlocking).await;
+        yield_to_event_loop().await;
     }
-    web_thread::web::yield_now_async(web_thread::web::YieldTime::UserBlocking).await;
+    // One more yield to ensure everything is synchronized
+    yield_to_event_loop().await;
 
     Ok(())
+}
+
+/// Yields to the JavaScript event loop.
+async fn yield_to_event_loop() {
+    use wasm_bindgen_futures::JsFuture;
+
+    let promise = js_sys::Promise::new(&mut |resolve, _| {
+        // Use queueMicrotask for minimal delay
+        let global = js_sys::global();
+        let queue_microtask = js_sys::Reflect::get(&global, &"queueMicrotask".into())
+            .ok()
+            .and_then(|f| f.dyn_into::<js_sys::Function>().ok());
+
+        if let Some(queue) = queue_microtask {
+            let _ = queue.call1(&JsValue::UNDEFINED, &resolve);
+        } else {
+            // Fallback: resolve immediately
+            let _ = resolve.call0(&JsValue::UNDEFINED);
+        }
+    });
+
+    let _ = JsFuture::from(promise).await;
 }
 
 /// Create an audio worklet node
@@ -86,7 +110,7 @@ pub fn create_node<P: Processor>(
     data: P::Data,
     options: Option<&web_sys::AudioWorkletNodeOptions>,
 ) -> Result<AudioWorkletNodeWrapper, JsValue> {
-    use web_thread::web::audio_worklet::BaseAudioContextExt;
+    use waw_thread::BaseAudioContextExt;
 
     // Create the shared active state flag
     let is_active = Arc::new(AtomicBool::new(true));

@@ -14,7 +14,7 @@ targets = ["wasm32-unknown-unknown"]
 js-sys = "0.3.80"
 wasm-bindgen = { version = "0.2.98", default-features = false }
 wasm-bindgen-futures = "0.4.48"
-web-thread = { path = "../web-thread-fork", features=["audio-worklet"] }
+waw-thread = { path = "../waw-thread" }
 
 [dependencies]
 inventory = "0.3.21"

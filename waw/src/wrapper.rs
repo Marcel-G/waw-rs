@@ -9,7 +9,7 @@ use std::sync::{
 };
 use wasm_bindgen::JsCast;
 use web_sys::{AudioWorkletGlobalScope, AudioWorkletNodeOptions, AudioWorkletProcessor};
-use web_thread::web::audio_worklet::ExtendAudioWorkletProcessor;
+use waw_thread::ExtendAudioWorkletProcessor;
 
 /// Internal data structure that wraps user data with lifecycle management.
 pub struct ProcessorWrapperData<D> {
