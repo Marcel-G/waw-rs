@@ -1,8 +1,9 @@
 import init, { registerContext, FilterNode, OscillatorNode } from './pkg/waw_demo';
+import shimUrl from './pkg/waw_demo?url';
 
 const main = async () => {
   await init()
-  const context = await registerContext();
+  const context = await registerContext(new URL(shimUrl, import.meta.url).href);
 
   const osc_1 = new OscillatorNode(context, 110.0)
   const filter_1 = new FilterNode(context, 440.0)
@@ -30,3 +31,4 @@ const main = async () => {
 };
 
 main();
+
