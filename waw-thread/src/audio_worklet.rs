@@ -373,18 +373,21 @@ where
 
     // Build and cache the script URL in thread-local storage.
     // This keeps the blob URL alive for the lifetime of the thread,
-    // matching the original web-thread implementation.
-    let script_url_raw = SCRIPT_URL.with(|cell| {
+    // matching the original wasm-worker implementation.
+    //
+    // The shim_url is captured on first call; subsequent calls will reuse the cached URL.
+    let shim_url_owned = shim_url.map(String::from);
+    SCRIPT_URL.with(|cell| {
         let mut url_opt = cell.borrow_mut();
         if url_opt.is_none() {
-            let shim_url_string = shim_url
+            let shim_url_string = shim_url_owned
+                .as_deref()
                 .map(String::from)
                 .unwrap_or_else(|| META.with(Meta::url));
             *url_opt = Some(ScriptUrl::new(
                 &WORKLET_SCRIPT.replacen("@shim.js", &shim_url_string, 1),
             ));
         }
-        url_opt.as_ref().unwrap().as_raw().to_owned()
     });
 
     let worklet = match context.audio_worklet() {
@@ -396,7 +399,11 @@ where
         }
     };
 
-    match worklet.add_module(&script_url_raw) {
+    // Call add_module inside the .with() callback to ensure the URL stays borrowed
+    match SCRIPT_URL.with(|cell| {
+        let url_opt = cell.borrow();
+        worklet.add_module(url_opt.as_ref().unwrap().as_raw())
+    }) {
         Ok(promise) => {
             context
                 .unchecked_ref::<BaseAudioContextExtJs>()
