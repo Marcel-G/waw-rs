@@ -278,22 +278,10 @@ impl Future for RegisterThreadFuture {
                         &options,
                     ) {
                         Ok(_node) => {
-                            // Wait for worklet to signal it's ready by setting lock to 0
-                            #[cfg(target_feature = "atomics")]
-                            {
-                                use std::arch::wasm32;
-                                while WORKLET_LOCK.load(Ordering::Acquire) != 0 {
-                                    // SAFETY: WORKLET_LOCK is a valid i32 atomic
-                                    unsafe {
-                                        wasm32::memory_atomic_wait32(
-                                            WORKLET_LOCK.as_ptr(),
-                                            1,
-                                            -1,
-                                        );
-                                    }
-                                }
-                            }
-
+                            // The worklet will initialize asynchronously.
+                            // We don't block here - Atomics.wait can't be called on main thread.
+                            // The worklet script will signal completion by storing to the lock,
+                            // but we proceed immediately since registration is complete.
                             return Poll::Ready(Ok(AudioWorkletHandle { _context: context }));
                         }
                         Err(e) => {

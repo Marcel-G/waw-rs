@@ -3,11 +3,6 @@
 //! This is a simplified fork of web-thread focused solely on audio worklet
 //! functionality with support for custom shim URLs for bundler compatibility.
 
-#![cfg_attr(
-    target_feature = "atomics",
-    feature(stdarch_wasm_atomic_wait)
-)]
-
 mod audio_worklet;
 mod js;
 mod script_url;
