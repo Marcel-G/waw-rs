@@ -35,6 +35,10 @@ static WORKLET_LOCK: AtomicI32 = AtomicI32::new(0);
 thread_local! {
     /// Cached [`JsValue`] holding index to worklet lock.
     static WORKLET_LOCK_INDEX: JsValue = i32_to_buffer_index(WORKLET_LOCK.as_ptr()).into();
+
+    /// Cached script URL - kept alive for the lifetime of the thread.
+    /// This prevents the blob URL from being revoked before the worklet loads it.
+    static SCRIPT_URL: std::cell::RefCell<Option<ScriptUrl>> = const { std::cell::RefCell::new(None) };
 }
 
 #[wasm_bindgen]
@@ -182,8 +186,6 @@ enum RegisterState {
         promise: JsFuture,
         stack_size: Option<usize>,
         task: Box<dyn FnOnce() + Send>,
-        // Keep the script URL alive until the module is loaded
-        _script_url: ScriptUrl,
     },
     WaitingForLock {
         context: BaseAudioContext,
@@ -212,11 +214,8 @@ impl Future for RegisterThreadFuture {
                     mut promise,
                     stack_size,
                     task,
-                    _script_url,
                 } => match Pin::new(&mut promise).poll(cx) {
                     Poll::Ready(Ok(_)) => {
-                        // Module loaded, script_url can now be dropped
-                        drop(_script_url);
                         self.state = Some(RegisterState::WaitingForLock {
                             context,
                             stack_size,
@@ -233,7 +232,6 @@ impl Future for RegisterThreadFuture {
                             promise,
                             stack_size,
                             task,
-                            _script_url,
                         });
                         return Poll::Pending;
                     }
@@ -373,12 +371,21 @@ where
         };
     }
 
-    // Build the script URL
-    let shim_url_string = shim_url
-        .map(String::from)
-        .unwrap_or_else(|| META.with(Meta::url));
-
-    let script_url = ScriptUrl::new(&WORKLET_SCRIPT.replacen("@shim.js", &shim_url_string, 1));
+    // Build and cache the script URL in thread-local storage.
+    // This keeps the blob URL alive for the lifetime of the thread,
+    // matching the original web-thread implementation.
+    let script_url_raw = SCRIPT_URL.with(|cell| {
+        let mut url_opt = cell.borrow_mut();
+        if url_opt.is_none() {
+            let shim_url_string = shim_url
+                .map(String::from)
+                .unwrap_or_else(|| META.with(Meta::url));
+            *url_opt = Some(ScriptUrl::new(
+                &WORKLET_SCRIPT.replacen("@shim.js", &shim_url_string, 1),
+            ));
+        }
+        url_opt.as_ref().unwrap().as_raw().to_owned()
+    });
 
     let worklet = match context.audio_worklet() {
         Ok(w) => w,
@@ -389,7 +396,7 @@ where
         }
     };
 
-    match worklet.add_module(script_url.as_raw()) {
+    match worklet.add_module(&script_url_raw) {
         Ok(promise) => {
             context
                 .unchecked_ref::<BaseAudioContextExtJs>()
@@ -401,7 +408,6 @@ where
                     promise: JsFuture::from(promise),
                     stack_size,
                     task: Box::new(task),
-                    _script_url: script_url,
                 }),
             }
         }
